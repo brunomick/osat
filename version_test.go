@@ -3,11 +3,14 @@ package main
 import (
 	"encoding/json"
 	"os"
+	"strings"
 	"testing"
 )
 
 // La versión vive en dos lugares (wails.json para el manifiesto del .exe y
 // frontend/package.json para "Acerca de"): este test avisa si se desfasan.
+// En una beta, package.json lleva "1.1.0-beta.1" y wails.json solo "1.1.0": la versión
+// del .exe y del instalador de Windows tiene que ser numérica.
 func TestVersionMatchesBetweenWailsAndPackageJSON(t *testing.T) {
 	wailsRaw, err := os.ReadFile("wails.json")
 	if err != nil {
@@ -37,8 +40,8 @@ func TestVersionMatchesBetweenWailsAndPackageJSON(t *testing.T) {
 		t.Fatalf("falta la versión: wails.json info.productVersion=%q, frontend/package.json version=%q",
 			wails.Info.ProductVersion, pkg.Version)
 	}
-	if wails.Info.ProductVersion != pkg.Version {
-		t.Errorf("las versiones no coinciden: wails.json info.productVersion=%q y frontend/package.json version=%q; igualá las dos (y las dos apariciones en frontend/package-lock.json)",
+	if base, _, _ := strings.Cut(pkg.Version, "-"); wails.Info.ProductVersion != base {
+		t.Errorf("las versiones no coinciden: wails.json info.productVersion=%q y frontend/package.json version=%q; igualá las dos, sin el -beta.N en wails.json (y las dos apariciones en frontend/package-lock.json)",
 			wails.Info.ProductVersion, pkg.Version)
 	}
 }

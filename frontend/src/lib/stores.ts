@@ -368,7 +368,7 @@ const fallbackSettings: Settings = {
     logDir: '',
   },
   files: { askDownloadDir: true, downloadDir: '', onConflict: 'ask' },
-  general: { defaultShell: '', verboseLog: false, restoreSession: true, appearance: 'dark', language: 'system', lockIdleMinutes: 0, lockUseHello: true, webBrowser: true, autoUpdate: true },
+  general: { defaultShell: '', verboseLog: false, restoreSession: true, appearance: 'dark', language: 'system', lockIdleMinutes: 0, lockUseHello: true, webBrowser: true, autoUpdate: true, betaUpdates: false },
 }
 
 export const settings = writable<Settings>(fallbackSettings)

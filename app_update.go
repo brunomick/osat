@@ -22,6 +22,7 @@ import (
 type UpdateInfo struct {
 	Current   string `json:"current"`
 	Latest    string `json:"latest"`
+	Beta      bool   `json:"beta"`      // Latest es una beta
 	Available bool   `json:"available"` // Latest es más nueva que la que corre
 	Notes     string `json:"notes"`     // qué trae (markdown)
 	PageURL   string `json:"pageUrl"`   // página de la Release, para bajarla a mano
@@ -46,11 +47,18 @@ var upd updateState
 func userAgent() string { return "osat/" + appVersion() }
 
 // UpdateCheck consulta la última versión publicada. lang ("es" o "en") elige el idioma de las notas.
-func (a *App) UpdateCheck(lang string) (UpdateInfo, error) {
+// beta: considerar también las betas (pre-releases); si no, solo la última estable.
+func (a *App) UpdateCheck(lang string, beta bool) (UpdateInfo, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 	cur := appVersion()
-	rel, err := updater.Latest(ctx, updater.LatestURL(), userAgent())
+	var rel updater.Release
+	var err error
+	if beta {
+		rel, err = updater.Newest(ctx, updater.ListURL(), userAgent())
+	} else {
+		rel, err = updater.Latest(ctx, updater.LatestURL(), userAgent())
+	}
 	if err != nil {
 		slog.Info("no se pudo buscar actualizaciones", "err", err)
 		return UpdateInfo{}, err
@@ -58,7 +66,7 @@ func (a *App) UpdateCheck(lang string) (UpdateInfo, error) {
 	upd.mu.Lock()
 	upd.rel = &rel
 	upd.mu.Unlock()
-	info := UpdateInfo{Current: cur, Latest: rel.Version, Available: updater.Newer(rel.Version, cur), Notes: updater.NotesFor(rel.Body, lang), PageURL: rel.PageURL}
+	info := UpdateInfo{Current: cur, Latest: rel.Version, Beta: rel.Beta, Available: updater.Newer(rel.Version, cur), Notes: updater.NotesFor(rel.Body, lang), PageURL: rel.PageURL}
 	if _, err := updater.Detect(); err != nil {
 		info.Manual = err.Error()
 	} else {

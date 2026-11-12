@@ -24,11 +24,21 @@ func LatestURL() string {
 	return "https://api.github.com/repos/brunomick/osat/releases/latest"
 }
 
+// ListURL son las Releases más recientes, betas incluidas (para quien acepta betas).
+// OSAT_UPDATE_LIST_URL la reemplaza (para probar contra un servidor local).
+func ListURL() string {
+	if u := os.Getenv("OSAT_UPDATE_LIST_URL"); u != "" {
+		return u
+	}
+	return "https://api.github.com/repos/brunomick/osat/releases?per_page=20"
+}
+
 // Release es una versión publicada.
 type Release struct {
 	Version string  // sin la "v": 0.5.0
 	Body    string  // notas de la Release tal cual (en español y, después de enMarker, en inglés); ver NotesFor
 	PageURL string  // página de la Release
+	Beta    bool    // es una pre-release de GitHub
 	Assets  []Asset // archivos para descargar
 }
 
@@ -41,68 +51,150 @@ type Asset struct {
 
 var client = &http.Client{Timeout: 30 * time.Second}
 
-// Latest consulta la Release más nueva.
-func Latest(ctx context.Context, url, userAgent string) (Release, error) {
+// ghRelease es una Release como la devuelve la API de GitHub.
+type ghRelease struct {
+	TagName string `json:"tag_name"`
+	Body    string `json:"body"`
+	HTMLURL string `json:"html_url"`
+	Draft   bool   `json:"draft"`
+	Pre     bool   `json:"prerelease"`
+	Assets  []struct {
+		Name string `json:"name"`
+		URL  string `json:"browser_download_url"`
+		Size int64  `json:"size"`
+	} `json:"assets"`
+}
+
+func (r ghRelease) release() Release {
+	rel := Release{Version: strings.TrimPrefix(r.TagName, "v"), Body: r.Body, PageURL: r.HTMLURL, Beta: r.Pre}
+	for _, a := range r.Assets {
+		rel.Assets = append(rel.Assets, Asset{Name: a.Name, URL: a.URL, Size: a.Size})
+	}
+	return rel
+}
+
+// getJSON pide url a la API de GitHub y decodifica la respuesta en v.
+func getJSON(ctx context.Context, url, userAgent string, v any) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		return Release{}, err
+		return err
 	}
 	req.Header.Set("Accept", "application/vnd.github+json")
 	req.Header.Set("User-Agent", userAgent)
 	resp, err := client.Do(req)
 	if err != nil {
-		return Release{}, err
+		return err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return Release{}, i18n.Err("update.httpStatus", resp.Status)
+		return i18n.Err("update.httpStatus", resp.Status)
 	}
-	var r struct {
-		TagName string `json:"tag_name"`
-		Body    string `json:"body"`
-		HTMLURL string `json:"html_url"`
-		Draft   bool   `json:"draft"`
-		Pre     bool   `json:"prerelease"`
-		Assets  []struct {
-			Name string `json:"name"`
-			URL  string `json:"browser_download_url"`
-			Size int64  `json:"size"`
-		} `json:"assets"`
-	}
-	if err := json.NewDecoder(io.LimitReader(resp.Body, 4<<20)).Decode(&r); err != nil {
+	return json.NewDecoder(io.LimitReader(resp.Body, 4<<20)).Decode(v)
+}
+
+// Latest consulta la Release más nueva (sin betas).
+func Latest(ctx context.Context, url, userAgent string) (Release, error) {
+	var r ghRelease
+	if err := getJSON(ctx, url, userAgent, &r); err != nil {
 		return Release{}, err
 	}
 	if r.TagName == "" || r.Draft || r.Pre {
 		return Release{}, i18n.Err("update.noRelease")
 	}
-	rel := Release{Version: strings.TrimPrefix(r.TagName, "v"), Body: r.Body, PageURL: r.HTMLURL}
-	for _, a := range r.Assets {
-		rel.Assets = append(rel.Assets, Asset{Name: a.Name, URL: a.URL, Size: a.Size})
+	return r.release(), nil
+}
+
+// Newest consulta la lista de Releases y devuelve la de versión más alta, estable o beta
+// (los borradores no cuentan). Es la que se le ofrece a quien acepta betas.
+func Newest(ctx context.Context, url, userAgent string) (Release, error) {
+	var list []ghRelease
+	if err := getJSON(ctx, url, userAgent, &list); err != nil {
+		return Release{}, err
 	}
-	return rel, nil
+	var best *ghRelease
+	for i, r := range list {
+		if r.TagName == "" || r.Draft {
+			continue
+		}
+		if best == nil || Newer(r.TagName, best.TagName) {
+			best = &list[i]
+		}
+	}
+	if best == nil {
+		return Release{}, i18n.Err("update.noRelease")
+	}
+	return best.release(), nil
 }
 
 // Newer dice si la versión a es más nueva que b ("0.10.0" > "0.9.3"). Lo que no es un número cuenta como 0.
+// Una beta es anterior a su versión estable, y las betas se ordenan por su número:
+// 1.1.0-beta.1 < 1.1.0-beta.2 < 1.1.0-beta.10 < 1.1.0 < 1.1.1-beta.1.
 func Newer(a, b string) bool {
-	pa, pb := parts(a), parts(b)
-	for i := 0; i < 3; i++ {
-		if pa[i] != pb[i] {
-			return pa[i] > pb[i]
-		}
-	}
-	return false
+	return compare(a, b) > 0
 }
 
-func parts(v string) [3]int {
-	var out [3]int
+func compare(a, b string) int {
+	na, pa := parts(a)
+	nb, pb := parts(b)
+	for i := 0; i < 3; i++ {
+		if na[i] != nb[i] {
+			return cmpInt(na[i], nb[i])
+		}
+	}
+	switch {
+	case pa == pb:
+		return 0
+	case pa == "":
+		return 1 // la estable es más nueva que cualquiera de sus betas
+	case pb == "":
+		return -1
+	}
+	// Como en semver: se comparan las partes separadas por puntos; las numéricas, como números.
+	xa, xb := strings.Split(pa, "."), strings.Split(pb, ".")
+	for i := 0; i < len(xa) && i < len(xb); i++ {
+		ia, errA := strconv.Atoi(xa[i])
+		ib, errB := strconv.Atoi(xb[i])
+		switch {
+		case errA == nil && errB == nil:
+			if ia != ib {
+				return cmpInt(ia, ib)
+			}
+		case errA == nil:
+			return -1 // lo numérico va antes que el texto
+		case errB == nil:
+			return 1
+		default:
+			if c := strings.Compare(xa[i], xb[i]); c != 0 {
+				return c
+			}
+		}
+	}
+	return cmpInt(len(xa), len(xb))
+}
+
+func cmpInt(a, b int) int {
+	switch {
+	case a > b:
+		return 1
+	case a < b:
+		return -1
+	}
+	return 0
+}
+
+// parts separa "v1.2.3-beta.1+algo" en [1 2 3] y "beta.1" (lo que va después de "+" no cuenta).
+func parts(v string) (nums [3]int, pre string) {
 	v = strings.TrimPrefix(strings.TrimSpace(v), "v")
-	if i := strings.IndexAny(v, "-+"); i >= 0 {
+	if i := strings.IndexByte(v, '+'); i >= 0 {
 		v = v[:i]
 	}
-	for i, p := range strings.SplitN(v, ".", 3) {
-		out[i], _ = strconv.Atoi(p)
+	if i := strings.IndexByte(v, '-'); i >= 0 {
+		v, pre = v[:i], v[i+1:]
 	}
-	return out
+	for i, p := range strings.SplitN(v, ".", 3) {
+		nums[i], _ = strconv.Atoi(p)
+	}
+	return nums, pre
 }
 
 // Kind es la forma de instalar que usa este osat.

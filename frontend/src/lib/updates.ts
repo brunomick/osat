@@ -1,7 +1,7 @@
 import { get, writable } from 'svelte/store'
 import { api, errorText, on, type UpdateInfo } from './api'
 import { locale, tr } from './i18n'
-import { activeTabId, openTab, tabs, toast } from './stores'
+import { activeTabId, openTab, settings, tabs, toast } from './stores'
 
 // Actualizaciones (app_update.go): el aviso de versión nueva, el progreso mientras se instala,
 // y un error si falla (UpdateDialog). Las novedades de la primera vez que se abre una versión nueva van en una pestaña (WhatsNewView).
@@ -19,7 +19,7 @@ export const whatsNewNotes = writable('')
 /** Busca una versión nueva. manual: lo pidió el usuario (avisa también si no hay o si falla). */
 export async function checkForUpdates(manual: boolean) {
   try {
-    const info = await api.updateCheck(get(locale))
+    const info = await api.updateCheck(get(locale), !!get(settings).general.betaUpdates)
     if (info.available) updateUi.set({ kind: 'available', info })
     else if (manual) toast(tr('update.upToDate', { version: info.current }), 'success')
   } catch (e) {

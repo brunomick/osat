@@ -29,6 +29,9 @@
       {#if u.kind === 'available'}
         <h1>{$t('update.availableTitle')}</h1>
         <p class="lead">{$t('update.availableText', { latest: u.info.latest, current: u.info.current })}</p>
+        {#if u.info.beta}
+          <p class="beta">{$t('update.betaNote')}</p>
+        {/if}
         {#if u.info.notes}
           <div class="notes">{@html renderMarkdown(u.info.notes)}</div>
         {/if}
@@ -97,6 +100,10 @@
   }
   .small {
     font-size: 12px;
+  }
+  .beta {
+    font-size: 12px;
+    color: var(--warning);
   }
   .err {
     color: var(--danger);

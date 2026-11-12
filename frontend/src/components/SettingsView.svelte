@@ -566,11 +566,16 @@
             <input type="checkbox" checked={$settings.general.autoUpdate} on:change={(e) => setGeneral({ autoUpdate: e.currentTarget.checked })} />
             <span>{$t('settings.autoUpdate')}</span>
           </label>
+          <label class="row check">
+            <input type="checkbox" checked={$settings.general.betaUpdates} on:change={(e) => setGeneral({ betaUpdates: e.currentTarget.checked })} />
+            <span>{$t('settings.betaUpdates')}</span>
+          </label>
           <div class="row">
             <span>{$t('settings.versionLabel', { version })}</span>
             <div class="pick"><button disabled={checking} on:click={checkNow}>{$t('settings.checkUpdates')}</button></div>
           </div>
           <p class="muted small">{$t('settings.autoUpdateHelp')}</p>
+          <p class="muted small">{$t('settings.betaUpdatesHelp')}</p>
         {/if}
       </div>
     </details>

@@ -672,6 +672,47 @@ func (a *App) K8sResources(sessionID, namespace string) ([]remote.K8sItem, error
 	return a.mgr.K8sResources(sessionID, namespace)
 }
 
+// ---------- Control de versiones (git del servidor, pestaña Repositorio) ----------
+
+func (a *App) GitStatus(sessionID, dir string) (remote.GitStatus, error) {
+	return a.mgr.GitStatus(sessionID, dir)
+}
+func (a *App) GitStage(sessionID, root string, paths []string) error {
+	return a.mgr.GitStage(sessionID, root, paths)
+}
+func (a *App) GitUnstage(sessionID, root string, paths []string) error {
+	return a.mgr.GitUnstage(sessionID, root, paths)
+}
+func (a *App) GitDiscard(sessionID, root string, tracked, untracked []string) error {
+	return a.mgr.GitDiscard(sessionID, root, tracked, untracked)
+}
+func (a *App) GitCommit(sessionID, root, message string) error {
+	return a.mgr.GitCommit(sessionID, root, message)
+}
+func (a *App) GitSetIdentity(sessionID, root, name, email string) error {
+	return a.mgr.GitSetIdentity(sessionID, root, name, email)
+}
+func (a *App) GitPull(sessionID, root string) error  { return a.mgr.GitPull(sessionID, root) }
+func (a *App) GitPush(sessionID, root string) error  { return a.mgr.GitPush(sessionID, root) }
+func (a *App) GitFetch(sessionID, root string) error { return a.mgr.GitFetch(sessionID, root) }
+func (a *App) GitBranches(sessionID, root string) ([]string, error) {
+	return a.mgr.GitBranches(sessionID, root)
+}
+func (a *App) GitCheckout(sessionID, root, name string, create bool) error {
+	return a.mgr.GitCheckout(sessionID, root, name, create)
+}
+
+// GitFile es el contenido de un archivo en el último commit o en lo preparado (para el diff).
+type GitFile struct {
+	Text   string `json:"text"`
+	Exists bool   `json:"exists"`
+}
+
+func (a *App) GitFileAt(sessionID, root, ref, path string) (GitFile, error) {
+	text, exists, err := a.mgr.GitFileAt(sessionID, root, ref, path)
+	return GitFile{Text: text, Exists: exists}, err
+}
+
 // ---------- Archivos de esta PC (panel "Este equipo") ----------
 
 func (a *App) LocalHome() string                             { return localfs.Home() }

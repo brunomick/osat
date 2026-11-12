@@ -148,6 +148,8 @@ export interface Settings {
     webBrowser: boolean
     /** Al abrir osat, buscar si hay una versión nueva (y ofrecer instalarla). */
     autoUpdate: boolean
+    /** Ofrecer también las versiones beta (pre-releases), no solo las estables. */
+    betaUpdates: boolean
   }
 }
 
@@ -155,6 +157,8 @@ export interface Settings {
 export interface UpdateInfo {
   current: string
   latest: string
+  /** latest es una beta (pre-release). */
+  beta: boolean
   /** latest es más nueva que la que corre. */
   available: boolean
   /** Qué trae (markdown). */
@@ -582,7 +586,8 @@ export const api = {
   /** Guarda texto en un .txt que elige el usuario; devuelve la ruta, o "" si canceló. */
   saveText: (defaultName: string, text: string): Promise<string> => app().SaveText(defaultName, text),
   /** lang: idioma de las notas ('es' o 'en'). */
-  updateCheck: (lang: string): Promise<UpdateInfo> => app().UpdateCheck(lang),
+  /** beta: considerar también las betas. */
+  updateCheck: (lang: string, beta: boolean): Promise<UpdateInfo> => app().UpdateCheck(lang, beta),
   /** Baja e instala la versión que encontró updateCheck (avance: evento update:progress); después osat se reinicia. */
   updateApply: (): Promise<void> => app().UpdateApply(),
   updateOpenPage: (): Promise<void> => app().UpdateOpenPage(),

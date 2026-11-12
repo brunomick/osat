@@ -1,5 +1,6 @@
 # Al subir un tag vX.Y.Z, compila osat para Windows, Linux y macOS y publica la Release con los archivos
 # y las notas de esa versión del CHANGELOG. El tag tiene que coincidir con la versión de frontend/package.json.
+# Las betas (vX.Y.Z-beta.N) salen como pre-release: ver el paso Publicar.
 name: Release
 
 on:
@@ -114,10 +115,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         # Si la Release ya existe (el tag se volvió a subir), se reemplazan sus archivos y notas.
+        # Un tag con guion (v1.1.0-beta.1) es una beta: se publica como pre-release, que GitHub no
+        # devuelve en releases/latest; solo la ve quien activó "Recibir versiones beta".
         run: |
+          pre=""
+          case "$GITHUB_REF_NAME" in *-*) pre="--prerelease" ;; esac
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
             gh release upload "$GITHUB_REF_NAME" dist/* --clobber
-            gh release edit "$GITHUB_REF_NAME" --notes-file notes.md
+            gh release edit "$GITHUB_REF_NAME" --notes-file notes.md $pre
           else
-            gh release create "$GITHUB_REF_NAME" dist/* --title "osat ${GITHUB_REF_NAME#v}" --notes-file notes.md
+            gh release create "$GITHUB_REF_NAME" dist/* --title "osat ${GITHUB_REF_NAME#v}" --notes-file notes.md $pre
           fi

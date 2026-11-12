@@ -28,6 +28,17 @@ func TestNewer(t *testing.T) {
 		{"0.4.1", "0.4.0", true},
 		{"0.5.0-beta", "0.4.9", true},
 		{"desconocida", "0.1.0", false},
+		// Betas: anteriores a su estable, ordenadas por número.
+		{"1.1.0", "1.1.0-beta.1", true},
+		{"1.1.0-beta.1", "1.1.0", false},
+		{"1.1.0-beta.2", "1.1.0-beta.1", true},
+		{"1.1.0-beta.10", "1.1.0-beta.9", true},
+		{"1.1.0-beta.1", "1.1.0-beta.1", false},
+		{"1.1.0-beta.1", "1.0.0", true},
+		{"1.0.0", "1.1.0-beta.1", false},
+		{"1.1.1-beta.1", "1.1.0", true},
+		{"1.1.0-rc.1", "1.1.0-beta.3", true},
+		{"1.1.0-beta.1", "1.1.0-beta", true},
 	}
 	for _, c := range cases {
 		if got := Newer(c.a, c.b); got != c.want {
@@ -144,6 +155,38 @@ func TestLatestErrors(t *testing.T) {
 	}
 	if _, err := Latest(context.Background(), srv.URL, "osat"); err == nil {
 		t.Error("una prerelease no cuenta como versión publicada")
+	}
+}
+
+func TestNewest(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`[
+			{"tag_name":"v1.2.0","draft":true},
+			{"tag_name":"v1.1.0-beta.2","prerelease":true,"html_url":"https://x/b2"},
+			{"tag_name":"v1.1.0-beta.10","prerelease":true,"html_url":"https://x/b10"},
+			{"tag_name":"v1.0.0","html_url":"https://x/1"}]`))
+	}))
+	defer srv.Close()
+	rel, err := Newest(context.Background(), srv.URL, "osat")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rel.Version != "1.1.0-beta.10" || !rel.Beta || rel.PageURL != "https://x/b10" {
+		t.Errorf("el borrador no cuenta y beta.10 es la más nueva: %+v", rel)
+	}
+
+	srv2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`[{"tag_name":"v1.1.0-beta.3","prerelease":true},{"tag_name":"v1.1.0"}]`))
+	}))
+	defer srv2.Close()
+	if rel, err := Newest(context.Background(), srv2.URL, "osat"); err != nil || rel.Version != "1.1.0" || rel.Beta {
+		t.Errorf("la estable gana a sus betas: %+v, %v", rel, err)
+	}
+
+	srv3 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(`[]`)) }))
+	defer srv3.Close()
+	if _, err := Newest(context.Background(), srv3.URL, "osat"); err == nil {
+		t.Error("sin Releases debería ser un error")
 	}
 }
 

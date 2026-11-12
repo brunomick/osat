@@ -154,7 +154,7 @@ func (s *testServer) session(nch ssh.NewChannel) {
 					status = 1
 				default:
 					c := exec.Command("sh", "-c", cmd)
-					c.Stderr = ch.Stderr()
+					c.Stdin, c.Stdout, c.Stderr = ch, ch, ch.Stderr() // git_shell_test lee la salida y manda el mensaje del commit
 					if err := c.Run(); err != nil {
 						status = 1
 						if ee, ok := err.(*exec.ExitError); ok {

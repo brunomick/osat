@@ -178,6 +178,8 @@ type General struct {
 	WebBrowser bool `json:"webBrowser"`
 	// Al abrir osat, buscar si hay una versión nueva (y ofrecer instalarla).
 	AutoUpdate bool `json:"autoUpdate"`
+	// Ofrecer también las versiones beta (pre-releases de GitHub), no solo las estables.
+	BetaUpdates bool `json:"betaUpdates"`
 }
 
 // DefaultFont es la fuente de la terminal (la misma que --mono de app.css).
