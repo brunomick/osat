@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>osat</title>
+    <!-- Pantalla de inicio animada, sobre toda la ventana: aparece la O en el centro, se corre a la
+         izquierda destapando "SAT" y queda OSAT centrado; después main.ts la desliza hacia la derecha
+         y quedan la app y la barra lateral (que se monta debajo mientras tanto).
+         Colores fijos porque app.css todavía no está cargado (son --bg y los --brand-* del logo). -->
+    <style>
+      /* El fondo es el --bg de cada tema (app.css); el logo, siempre con los colores de osat: los del oscuro,
+         o los de osat claro en los temas claros. El script del final del <head> pone data-theme. */
+      :root {
+        --splash-bg: #0a0a0a;
+        --splash-fg: #ececec;
+        --splash-signal: #3ddc6f;
+      }
+      :root:is([data-theme='light'], [data-theme='solarized-light'], [data-theme='github-light'], [data-theme='catppuccin-latte'], [data-theme='rose-pine-dawn']) {
+        --splash-fg: #0a0a0a;
+        --splash-signal: #15803d;
+      }
+      :root[data-theme='light'] {
+        --splash-bg: #ffffff;
+      }
+      :root[data-theme='dracula'] {
+        --splash-bg: #282a36;
+      }
+      :root[data-theme='solarized-dark'] {
+        --splash-bg: #002b36;
+      }
+      :root[data-theme='solarized-light'] {
+        --splash-bg: #fdf6e3;
+      }
+      :root[data-theme='gruvbox-dark'] {
+        --splash-bg: #282828;
+      }
+      :root[data-theme='one-dark'] {
+        --splash-bg: #282c34;
+      }
+      :root[data-theme='nord'] {
+        --splash-bg: #2e3440;
+      }
+      :root[data-theme='tokyo-night'] {
+        --splash-bg: #1a1b26;
+      }
+      :root[data-theme='catppuccin-mocha'] {
+        --splash-bg: #1e1e2e;
+      }
+      :root[data-theme='monokai'] {
+        --splash-bg: #272822;
+      }
+      :root[data-theme='github-dark'] {
+        --splash-bg: #0d1117;
+      }
+      :root[data-theme='rose-pine'] {
+        --splash-bg: #191724;
+      }
+      :root[data-theme='kanagawa'] {
+        --splash-bg: #1f1f28;
+      }
+      :root[data-theme='everforest'] {
+        --splash-bg: #2d353b;
+      }
+      :root[data-theme='github-light'] {
+        --splash-bg: #ffffff;
+      }
+      :root[data-theme='catppuccin-latte'] {
+        --splash-bg: #eff1f5;
+      }
+      :root[data-theme='rose-pine-dawn'] {
+        --splash-bg: #faf4ed;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: var(--splash-bg);
+      }
+      #splash {
+        position: fixed;
+        inset: 0;
+        z-index: 2000;
+        display: grid;
+        place-items: center;
+        background: var(--splash-bg);
+        transition: transform 0.6s cubic-bezier(0.65, 0, 0.35, 1);
+      }
+      #splash.out {
+        transform: translateX(100%);
+        box-shadow: -16px 0 32px rgba(0, 0, 0, 0.6); /* que se note el borde al pasar sobre la app */
+      }
+      #splash .sat,
+      #splash .o rect:first-child {
+        stroke: var(--splash-fg);
+      }
+      #splash .dot {
+        fill: var(--splash-signal);
+      }
+      #splash svg {
+        overflow: visible;
+        animation: splash-in 0.5s ease-out both;
+      }
+      /* La O arranca centrada (186 = centro de la palabra − centro de la O, en unidades del viewBox)
+         y se corre a su lugar. SAT solo se ve a la derecha de la O (.wipe la acompaña) y arranca
+         escondida detrás de ella (con margen, que no asome ni un borde de la T): sale hacia la
+         derecha mientras la O va a la izquierda. */
+      #splash .o,
+      #splash .wipe {
+        animation: splash-slide 0.9s cubic-bezier(0.65, 0, 0.35, 1) 0.6s both;
+      }
+      #splash .sat {
+        animation: splash-unfold 0.9s cubic-bezier(0.65, 0, 0.35, 1) 0.6s both;
+      }
+      @keyframes splash-in {
+        from {
+          opacity: 0;
+          transform: scale(0.85);
+        }
+      }
+      @keyframes splash-slide {
+        from {
+          transform: translateX(186px);
+        }
+      }
+      @keyframes splash-unfold {
+        from {
+          transform: translateX(-210px);
+        }
+      }
+      /* Hasta que la página tiene su tamaño final (ver el script de abajo) y hasta que osat se
+         desbloquea (hold, lo quita main.ts): oculta y en pausa. */
+      #splash.wait svg,
+      #splash.wait svg *,
+      #splash.hold svg,
+      #splash.hold svg * {
+        animation-play-state: paused;
+      }
+      #splash.wait svg,
+      #splash.hold svg {
+        visibility: hidden;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #splash,
+        #splash * {
+          animation: none !important;
+          transition: none !important;
+        }
+      }
+    </style>
+    <script>
+      // El último tema que usó la app (lo guarda lib/theme.ts); sin valor, oscuro.
+      try {
+        var theme = localStorage.getItem('osat.theme')
+        if (theme && theme !== 'dark') document.documentElement.dataset.theme = theme
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <div id="splash" class="wait hold">
+      <svg width="330" height="72" viewBox="-2 -2 476 104" aria-label="osat">
+        <defs>
+          <clipPath id="splash-reveal">
+            <rect class="wipe" x="104" y="-10" width="380" height="124" />
+          </clipPath>
+        </defs>
+        <g clip-path="url(#splash-reveal)">
+          <g class="sat" fill="none" stroke-width="18" stroke-linecap="square" stroke-linejoin="round">
+            <path d="M216,8 H153 A21,21 0 0 0 153,50 H195 A21,21 0 0 1 195,92 H132" />
+            <path d="M256,92 V29 A21,21 0 0 1 277,8 H319 A21,21 0 0 1 340,29 V92 M256,54 H340" />
+            <path d="M380,8 H464 M422,8 V92" />
+          </g>
+        </g>
+        <g class="o">
+          <rect x="8" y="8" width="84" height="84" rx="21" fill="none" stroke-width="18" />
+          <rect x="33.5" y="33.5" width="33" height="33" class="dot" />
+        </g>
+      </svg>
+    </div>
+    <script>
+      // La página carga con la ventana oculta y a otro tamaño: al mostrarse maximizada cambia de
+      // tamaño y Windows anima la apertura (~200 ms, mueve y escala todo el contenido). Si la
+      // animación de la splash arrancara antes, la O se vería saltar. Arranca cuando la ventana
+      // lleva 300 ms visible y el tamaño no cambió en 150 ms (como mucho a los 1,5 s).
+      ;(function () {
+        var splash = document.getElementById('splash')
+        var start = Date.now()
+        var visibleAt = document.visibilityState === 'visible' ? start : 0
+        var lastResize = start
+        function check() {
+          var now = Date.now()
+          if (now - start >= 1500 || (visibleAt && now - visibleAt >= 300 && now - lastResize >= 150)) {
+            removeEventListener('resize', onResize)
+            document.removeEventListener('visibilitychange', onVisible)
+            splash.classList.remove('wait')
+            return
+          }
+          setTimeout(check, 30)
+        }
+        function onResize() {
+          lastResize = Date.now()
+        }
+        function onVisible() {
+          if (document.visibilityState === 'visible' && !visibleAt) visibleAt = Date.now()
+        }
+        addEventListener('resize', onResize)
+        document.addEventListener('visibilitychange', onVisible)
+        check()
+      })()
+    </script>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

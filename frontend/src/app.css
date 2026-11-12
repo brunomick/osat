@@ -1,0 +1,603 @@
+/* Casi sin estilos: formas rectas, sin sombras ni animaciones, controles
+   casi nativos. Solo paleta (negro, grises y blanco) y la tipografía de las
+   terminales. Lo único con color son los indicadores de estado: el verde
+   (--signal, el del logo) marca lo que está vivo, una cosa por vista. */
+:root {
+  --bg: #0a0a0a; /* pantalla: terminal, editor, listas */
+  --bg-2: #1c1c1c; /* barra lateral, barras de herramientas, estado */
+  --bg-3: #272727; /* al pasar el mouse */
+  --bg-4: #333333; /* seleccionado / presionado */
+  --rail: #121212; /* barra de título y de pestañas */
+  --border: #2f2f2f;
+  --text: #ececec;
+  --text-2: #a6a6a6;
+  --text-3: #919191;
+  --accent: #f0f0f0;
+  --accent-2: #ffffff;
+  --on-accent: #0a0a0a;
+  --signal: #3ddc6f; /* verde de la marca: conectado, en marcha, pestaña enfocada */
+  /* El logo (LogoMark, Wordmark): siempre los colores de osat. Los temas de color no los cambian;
+     los claros toman los de osat claro. */
+  --brand-signal: #3ddc6f;
+  --brand-ink: #ececec;
+  --brand-tile: #0a0a0a;
+  --danger: #d46a6a;
+  --success: var(--signal);
+  --warning: #cf9f4e;
+  --radius: 0;
+  /* Incluida en la app (main.ts); la misma que usan las terminales. */
+  --mono: 'JetBrains Mono Variable', Consolas, monospace;
+  color-scheme: dark;
+  /* Colores sueltos de las vistas. Cada uno existe en los dos temas. */
+  --on-danger: #0a0a0a; /* texto sobre --danger */
+  --win-close: #c42b1c; /* cerrar de la barra de título (como Windows) */
+  --on-win-close: #ffffff;
+  --guide: #3a3a3a; /* guías del árbol de la barra lateral */
+  --guide-2: #5a5a5a; /* ídem, en la pestaña activa */
+  --scroll-thumb: #3a3a3a; /* barras de scroll */
+  --scroll-thumb-2: #5a5a5a; /* ídem, al pasar el mouse */
+  --overlay: rgba(0, 0, 0, 0.4); /* fondo de los diálogos */
+  --shadow-lg: rgba(0, 0, 0, 0.55); /* sombra de lo que se arrastra */
+  --shadow-sm: #000a; /* sombra de las barras flotantes */
+  --drop-tint: rgba(255, 255, 255, 0.08); /* zona donde se suelta */
+  /* Editor: búsqueda, selección y resaltado de sintaxis (colores de VS Code Dark+). */
+  --find-bg: rgba(200, 176, 112, 0.3);
+  --find-cur-bg: rgba(255, 170, 40, 0.65);
+  --find-cur-outline: #ffaa28;
+  --sel-bg: rgba(255, 255, 255, 0.26);
+  --syn-comment: #6a9955;
+  --syn-keyword: #569cd6;
+  --syn-type: #4ec9b0;
+  --syn-func: #dcdcaa;
+  --syn-string: #ce9178;
+  --syn-number: #b5cea8;
+  --syn-meta: #c586c0;
+  --syn-attr: #9cdcfe;
+  --syn-symbol: #d7ba7d;
+}
+
+/* Tema claro (Ajustes → General → Apariencia). Ver lib/theme.ts. */
+:root[data-theme='light'] {
+  --bg: #ffffff;
+  --bg-2: #f4f4f4;
+  --bg-3: #e9e9e9;
+  --bg-4: #dcdcdc;
+  --rail: #f7f7f7;
+  --border: #d4d4d4;
+  --text: #0a0a0a;
+  --text-2: #4a4a4a;
+  --text-3: #666666;
+  --accent: #0a0a0a;
+  --accent-2: #000000;
+  --on-accent: #ffffff;
+  --signal: #15803d; /* Signal Deep */
+  --brand-signal: #15803d;
+  --brand-ink: #0a0a0a;
+  --brand-tile: #ffffff;
+  --danger: #b42318;
+  --warning: #946000;
+  --on-danger: #ffffff;
+  color-scheme: light;
+  --guide: #c8c8c8;
+  --guide-2: #9a9a9a;
+  --scroll-thumb: #c8c8c8;
+  --scroll-thumb-2: #9a9a9a;
+  --overlay: rgba(0, 0, 0, 0.3);
+  --shadow-lg: rgba(0, 0, 0, 0.25);
+  --shadow-sm: rgba(0, 0, 0, 0.2);
+  --drop-tint: rgba(0, 0, 0, 0.06);
+  /* Colores de VS Code Light+. */
+  --find-bg: rgba(234, 192, 0, 0.35);
+  --find-cur-bg: rgba(255, 150, 0, 0.5);
+  --find-cur-outline: #c77700;
+  --sel-bg: rgba(0, 90, 220, 0.25);
+  --syn-comment: #008000;
+  --syn-keyword: #0000ff;
+  --syn-type: #267f99;
+  --syn-func: #795e26;
+  --syn-string: #a31515;
+  --syn-number: #098658;
+  --syn-meta: #af00db;
+  --syn-attr: #001080;
+  --syn-symbol: #811f3f;
+}
+
+/* Temas de color para toda la app (Ajustes → General → Apariencia), con los colores de los temas de
+   terminal del mismo nombre. Los oscuros parten del tema oscuro de arriba y cambian solo lo propio. */
+:root[data-theme='dracula'] {
+  --bg: #282a36;
+  --bg-2: #21222c;
+  --bg-3: #343746;
+  --bg-4: #44475a;
+  --rail: #191a21;
+  --border: #3a3c4e;
+  --text: #f8f8f2;
+  --text-2: #c6c8d6;
+  --text-3: #a9adc9;
+  --accent: #bd93f9;
+  --accent-2: #cfb0fb;
+  --on-accent: #191a21;
+  --signal: #50fa7b;
+  --danger: #ff7272;
+  --warning: #f1fa8c;
+  --on-danger: #191a21;
+  --guide: #44475a;
+  --guide-2: #6272a4;
+  --scroll-thumb: #44475a;
+  --scroll-thumb-2: #6272a4;
+}
+
+:root[data-theme='solarized-dark'] {
+  --bg: #002b36;
+  --bg-2: #073642;
+  --bg-3: #0e4452;
+  --bg-4: #155362;
+  --rail: #00212b;
+  --border: #164b58;
+  --text: #eee8d5;
+  --text-2: #c2cbc9;
+  --text-3: #aab6b6;
+  --accent: #6cb4ee;
+  --accent-2: #8cc4f2;
+  --on-accent: #002b36;
+  --signal: #a8bd1c;
+  --danger: #f2716c;
+  --warning: #e0ad30;
+  --on-danger: #002b36;
+  --guide: #164b58;
+  --guide-2: #2f6b78;
+  --scroll-thumb: #1d5866;
+  --scroll-thumb-2: #3a7a88;
+}
+
+:root[data-theme='gruvbox-dark'] {
+  --bg: #282828;
+  --bg-2: #1d2021;
+  --bg-3: #3c3836;
+  --bg-4: #504945;
+  --rail: #171819;
+  --border: #3c3836;
+  --text: #ebdbb2;
+  --text-2: #d5c4a1;
+  --text-3: #bdae93;
+  --accent: #fabd2f;
+  --accent-2: #ffcc4d;
+  --on-accent: #282828;
+  --signal: #b8bb26;
+  --danger: #fb6a59;
+  --warning: #fabd2f;
+  --on-danger: #1d2021;
+  --guide: #504945;
+  --guide-2: #7c6f64;
+  --scroll-thumb: #504945;
+  --scroll-thumb-2: #7c6f64;
+}
+
+:root[data-theme='one-dark'] {
+  --bg: #282c34;
+  --bg-2: #21252b;
+  --bg-3: #2c313a;
+  --bg-4: #3a404b;
+  --rail: #1b1e23;
+  --border: #3a3f4b;
+  --text: #dcdfe4;
+  --text-2: #b6bcc8;
+  --text-3: #a3abba;
+  --accent: #61afef;
+  --accent-2: #80bff3;
+  --on-accent: #1b1e23;
+  --signal: #98c379;
+  --danger: #ef7d86;
+  --warning: #e5c07b;
+  --on-danger: #1b1e23;
+  --guide: #3e4451;
+  --guide-2: #5c6370;
+  --scroll-thumb: #3e4451;
+  --scroll-thumb-2: #5c6370;
+}
+
+:root[data-theme='nord'] {
+  --bg: #2e3440;
+  --bg-2: #272c36;
+  --bg-3: #3b4252;
+  --bg-4: #434c5e;
+  --rail: #242933;
+  --border: #434c5e;
+  --text: #eceff4;
+  --text-2: #d8dee9;
+  --text-3: #b2bccc;
+  --accent: #88c0d0;
+  --accent-2: #9fd0de;
+  --on-accent: #2e3440;
+  --signal: #a3be8c;
+  --danger: #e0868e;
+  --warning: #ebcb8b;
+  --on-danger: #2e3440;
+  --guide: #434c5e;
+  --guide-2: #616e88;
+  --scroll-thumb: #434c5e;
+  --scroll-thumb-2: #616e88;
+}
+
+:root[data-theme='tokyo-night'] {
+  --bg: #1a1b26;
+  --bg-2: #16161e;
+  --bg-3: #24283b;
+  --bg-4: #2f3549;
+  --rail: #13131a;
+  --border: #292e42;
+  --text: #c0caf5;
+  --text-2: #a9b1d6;
+  --text-3: #9099c4;
+  --accent: #7aa2f7;
+  --accent-2: #97b6fa;
+  --on-accent: #1a1b26;
+  --signal: #9ece6a;
+  --danger: #f7768e;
+  --warning: #e0af68;
+  --on-danger: #1a1b26;
+  --guide: #292e42;
+  --guide-2: #565f89;
+  --scroll-thumb: #2f3549;
+  --scroll-thumb-2: #565f89;
+}
+
+:root[data-theme='catppuccin-mocha'] {
+  --bg: #1e1e2e;
+  --bg-2: #181825;
+  --bg-3: #313244;
+  --bg-4: #45475a;
+  --rail: #11111b;
+  --border: #3b3c52;
+  --text: #cdd6f4;
+  --text-2: #bac2de;
+  --text-3: #a6adc8;
+  --accent: #cba6f7;
+  --accent-2: #dbbef9;
+  --on-accent: #1e1e2e;
+  --signal: #a6e3a1;
+  --danger: #f38ba8;
+  --warning: #f9e2af;
+  --on-danger: #1e1e2e;
+  --guide: #45475a;
+  --guide-2: #6c7086;
+  --scroll-thumb: #45475a;
+  --scroll-thumb-2: #6c7086;
+}
+
+:root[data-theme='monokai'] {
+  --bg: #272822;
+  --bg-2: #1e1f1c;
+  --bg-3: #3e3d32;
+  --bg-4: #49483e;
+  --rail: #191a16;
+  --border: #47463b;
+  --text: #f8f8f2;
+  --text-2: #cfcfc2;
+  --text-3: #b0b0a2;
+  --accent: #ff6a9b;
+  --accent-2: #ff8ab0;
+  --on-accent: #1e1f1c;
+  --signal: #a6e22e;
+  --danger: #ff5f8f;
+  --warning: #fd971f;
+  --on-danger: #1e1f1c;
+  --guide: #49483e;
+  --guide-2: #75715e;
+  --scroll-thumb: #49483e;
+  --scroll-thumb-2: #75715e;
+}
+
+:root[data-theme='github-dark'] {
+  --bg: #0d1117;
+  --bg-2: #161b22;
+  --bg-3: #21262d;
+  --bg-4: #30363d;
+  --rail: #010409;
+  --border: #30363d;
+  --text: #e6edf3;
+  --text-2: #b1bac4;
+  --text-3: #8d96a0;
+  --accent: #1f6feb;
+  --accent-2: #388bfd;
+  --on-accent: #ffffff;
+  --signal: #3fb950;
+  --danger: #f85149;
+  --warning: #d29922;
+  --on-danger: #0d1117;
+  --guide: #30363d;
+  --guide-2: #6e7681;
+  --scroll-thumb: #30363d;
+  --scroll-thumb-2: #6e7681;
+}
+
+:root[data-theme='rose-pine'] {
+  --bg: #191724;
+  --bg-2: #1f1d2e;
+  --bg-3: #26233a;
+  --bg-4: #312e48;
+  --rail: #13111d;
+  --border: #343150;
+  --text: #e0def4;
+  --text-2: #c4c0dd;
+  --text-3: #908caa;
+  --accent: #ebbcba;
+  --accent-2: #f2d0ce;
+  --on-accent: #191724;
+  --signal: #9ccfd8;
+  --danger: #eb6f92;
+  --warning: #f6c177;
+  --on-danger: #191724;
+  --guide: #343150;
+  --guide-2: #6e6a86;
+  --scroll-thumb: #343150;
+  --scroll-thumb-2: #6e6a86;
+}
+
+:root[data-theme='kanagawa'] {
+  --bg: #1f1f28;
+  --bg-2: #16161d;
+  --bg-3: #2a2a37;
+  --bg-4: #363646;
+  --rail: #121218;
+  --border: #363646;
+  --text: #dcd7ba;
+  --text-2: #c8c093;
+  --text-3: #a6a69c;
+  --accent: #7e9cd8;
+  --accent-2: #9bb3e2;
+  --on-accent: #1f1f28;
+  --signal: #98bb6c;
+  --danger: #e46876;
+  --warning: #ffa066;
+  --on-danger: #1f1f28;
+  --guide: #363646;
+  --guide-2: #727169;
+  --scroll-thumb: #363646;
+  --scroll-thumb-2: #727169;
+}
+
+:root[data-theme='everforest'] {
+  --bg: #2d353b;
+  --bg-2: #272e33;
+  --bg-3: #343f44;
+  --bg-4: #3d484d;
+  --rail: #232a2e;
+  --border: #3d484d;
+  --text: #d3c6aa;
+  --text-2: #c5bb9f;
+  --text-3: #b3ac95;
+  --accent: #a7c080;
+  --accent-2: #bbd197;
+  --on-accent: #2d353b;
+  --signal: #a7c080;
+  --danger: #ef8a8c;
+  --warning: #dbbc7f;
+  --on-danger: #2d353b;
+  --guide: #3d484d;
+  --guide-2: #859289;
+  --scroll-thumb: #3d484d;
+  --scroll-thumb-2: #859289;
+}
+
+/* Temas claros de color: lo que comparten con osat claro (logo, sombras y colores del editor, VS Code Light+). */
+:root:is([data-theme='solarized-light'], [data-theme='github-light'], [data-theme='catppuccin-latte'], [data-theme='rose-pine-dawn']) {
+  color-scheme: light;
+  --brand-signal: #15803d;
+  --brand-ink: #0a0a0a;
+  --brand-tile: #ffffff;
+  --overlay: rgba(0, 0, 0, 0.3);
+  --shadow-lg: rgba(0, 0, 0, 0.25);
+  --shadow-sm: rgba(0, 0, 0, 0.2);
+  --drop-tint: rgba(0, 0, 0, 0.06);
+  --find-bg: rgba(234, 192, 0, 0.35);
+  --find-cur-bg: rgba(255, 150, 0, 0.5);
+  --find-cur-outline: #c77700;
+  --sel-bg: rgba(0, 90, 220, 0.25);
+  --syn-comment: #008000;
+  --syn-keyword: #0000ff;
+  --syn-type: #267f99;
+  --syn-func: #795e26;
+  --syn-string: #a31515;
+  --syn-number: #098658;
+  --syn-meta: #af00db;
+  --syn-attr: #001080;
+  --syn-symbol: #811f3f;
+}
+
+:root[data-theme='solarized-light'] {
+  --bg: #fdf6e3;
+  --bg-2: #eee8d5;
+  --bg-3: #e4ddc8;
+  --bg-4: #d9d2bc;
+  --rail: #f5efdc;
+  --border: #d6cfb9;
+  --text: #073642;
+  --text-2: #2e4a52;
+  --text-3: #44595f;
+  --accent: #1a6ca8;
+  --accent-2: #135a8e;
+  --on-accent: #fdf6e3;
+  --signal: #4f5e00;
+  --danger: #b0302a;
+  --warning: #7a5700;
+  --on-danger: #fdf6e3;
+  --guide: #d6cfb9;
+  --guide-2: #a8a089;
+  --scroll-thumb: #d0c8b0;
+  --scroll-thumb-2: #a8a089;
+  --sel-bg: rgba(38, 139, 210, 0.25);
+}
+
+:root[data-theme='github-light'] {
+  --bg: #ffffff;
+  --bg-2: #f6f8fa;
+  --bg-3: #eaeef2;
+  --bg-4: #dde3ea;
+  --rail: #f6f8fa;
+  --border: #d0d7de;
+  --text: #1f2328;
+  --text-2: #424a53;
+  --text-3: #59636e;
+  --accent: #0969da;
+  --accent-2: #0757b8;
+  --on-accent: #ffffff;
+  --signal: #1a7f37;
+  --danger: #cf222e;
+  --warning: #7d4e00;
+  --on-danger: #ffffff;
+  --guide: #d0d7de;
+  --guide-2: #8c959f;
+  --scroll-thumb: #d0d7de;
+  --scroll-thumb-2: #8c959f;
+}
+
+:root[data-theme='catppuccin-latte'] {
+  --bg: #eff1f5;
+  --bg-2: #e6e9ef;
+  --bg-3: #dce0e8;
+  --bg-4: #ccd0da;
+  --rail: #e6e9ef;
+  --border: #ccd0da;
+  --text: #3a3d52;
+  --text-2: #4c4f69;
+  --text-3: #5a5d75;
+  --accent: #8839ef;
+  --accent-2: #7028d4;
+  --on-accent: #ffffff;
+  --signal: #276b19;
+  --danger: #b80d32;
+  --warning: #8a5a00;
+  --on-danger: #ffffff;
+  --guide: #ccd0da;
+  --guide-2: #9ca0b0;
+  --scroll-thumb: #bcc0cc;
+  --scroll-thumb-2: #9ca0b0;
+  --sel-bg: rgba(136, 57, 239, 0.2);
+}
+
+:root[data-theme='rose-pine-dawn'] {
+  --bg: #faf4ed;
+  --bg-2: #f2e9e1;
+  --bg-3: #ebe2d9;
+  --bg-4: #dfdad9;
+  --rail: #f4ede8;
+  --border: #dfdad9;
+  --text: #3f3b5c;
+  --text-2: #504b72;
+  --text-3: #5c5880;
+  --accent: #6e5a8a;
+  --accent-2: #5b4874;
+  --on-accent: #ffffff;
+  --signal: #286983;
+  --danger: #9c4a62;
+  --warning: #8c5a12;
+  --on-danger: #ffffff;
+  --guide: #dfdad9;
+  --guide-2: #9893a5;
+  --scroll-thumb: #dfdad9;
+  --scroll-thumb-2: #9893a5;
+  --sel-bg: rgba(144, 122, 169, 0.25);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Barras de scroll finas y redondeadas, sin riel ni flechas; se aclaran al pasar el mouse. */
+::-webkit-scrollbar {
+  width: 3px;
+  height: 3px;
+}
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--scroll-thumb);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scroll-thumb-2);
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 13px var(--mono);
+  overflow: hidden;
+  user-select: none;
+}
+
+/* Controles planos; cualquier regla de un componente los pisa (:where). */
+:where(button, input, select, textarea) {
+  font: inherit;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 0;
+}
+:where(button) {
+  background: var(--bg-3);
+  padding: 3px 10px;
+}
+:where(button:hover:not(:disabled)) {
+  background: var(--bg-4);
+}
+:where(button:disabled) {
+  opacity: 0.45;
+}
+:where(input, select, textarea) {
+  background: var(--bg);
+  padding: 3px 6px;
+}
+:where(input, select, textarea):focus {
+  outline: 1px solid var(--text-2);
+  outline-offset: -1px;
+}
+:where(input[type='checkbox']) {
+  accent-color: var(--accent);
+}
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+button.primary:hover:not(:disabled) {
+  background: var(--accent-2);
+}
+button.danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: var(--on-accent);
+}
+button.icon,
+button.ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border-color: transparent;
+}
+button.icon:hover:not(:disabled),
+button.ghost:hover:not(:disabled) {
+  background: var(--bg-4);
+}
+
+input,
+textarea {
+  user-select: text;
+}
+
+.muted {
+  color: var(--text-2);
+}
+.mono {
+  font-family: var(--mono);
+}

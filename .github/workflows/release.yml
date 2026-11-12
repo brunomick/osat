@@ -1,0 +1,123 @@
+# Al subir un tag vX.Y.Z, compila osat para Windows, Linux y macOS y publica la Release con los archivos
+# y las notas de esa versión del CHANGELOG. El tag tiene que coincidir con la versión de frontend/package.json.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+          - os: ubuntu-24.04
+          - os: macos-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: El tag coincide con la versión
+        shell: bash
+        run: |
+          v=$(node -p "require('./frontend/package.json').version")
+          if [ "v$v" != "$GITHUB_REF_NAME" ]; then
+            echo "El tag $GITHUB_REF_NAME no coincide con la versión de frontend/package.json ($v)."
+            exit 1
+          fi
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Windows
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          go install github.com/wailsapp/wails/v2/cmd/wails@v2.16.0
+          command -v makensis || choco install nsis -y --no-progress
+          export PATH="$PATH:/c/Program Files (x86)/NSIS"
+          wails build -clean -nsis
+          mkdir dist
+          cp build/bin/*installer*.exe "dist/osat-$GITHUB_REF_NAME-windows-x64-setup.exe"
+          7z a "dist/osat-$GITHUB_REF_NAME-windows-x64-portable.zip" ./build/bin/osat.exe
+
+      - name: Linux
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev
+          sh build/linux/empaquetar.sh
+          mkdir dist
+          cp build/bin/osat-linux.tar.gz "dist/osat-$GITHUB_REF_NAME-linux-x64.tar.gz"
+
+      - name: macOS
+        if: runner.os == 'macOS'
+        run: |
+          go install github.com/wailsapp/wails/v2/cmd/wails@v2.16.0
+          wails build -clean -platform darwin/universal
+          mkdir dist
+          ditto -c -k --keepParent build/bin/osat.app "dist/osat-$GITHUB_REF_NAME-macos-universal.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: osat-${{ runner.os }}
+          path: dist/*
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      # Primero en español y después, tras <!-- lang:en -->, en inglés (CHANGELOG.en.md): osat muestra
+      # la parte del idioma del usuario (internal/updater, NotesFor).
+      - name: Notas de la versión (del CHANGELOG)
+        run: |
+          v="${GITHUB_REF_NAME#v}"
+          section() { awk -v v="$v" 'index($0, "## [" v "]") == 1 {on=1; next} index($0, "## [") == 1 {on=0} on' "$1"; }
+          section CHANGELOG.md > notes.md
+          cat >> notes.md <<'EOF'
+
+          ## Descargas
+
+          - **Windows**: `…-windows-x64-setup.exe` (instalador) o `…-windows-x64-portable.zip` (sin instalar). Windows puede avisar que la app no es conocida: *Más información → Ejecutar de todas formas*.
+          - **Linux**: `…-linux-x64.tar.gz`. Instalá WebKitGTK 4.1 (`sudo apt install libwebkit2gtk-4.1-0`) y después `tar xzf osat-*.tar.gz && sh osat-linux/instalar.sh`.
+          - **macOS**: `…-macos-universal.zip`. La app no está firmada: la primera vez, clic derecho en osat → *Abrir*.
+          EOF
+          if [ -n "$(section CHANGELOG.en.md | tr -d '[:space:]')" ]; then
+            printf '\n---\n\n<!-- lang:en -->\n' >> notes.md
+            section CHANGELOG.en.md >> notes.md
+            cat >> notes.md <<'EOF'
+
+          ## Downloads
+
+          - **Windows**: `…-windows-x64-setup.exe` (installer) or `…-windows-x64-portable.zip` (no install). Windows may say the app is unrecognized: *More info → Run anyway*.
+          - **Linux**: `…-linux-x64.tar.gz`. Install WebKitGTK 4.1 (`sudo apt install libwebkit2gtk-4.1-0`) and then `tar xzf osat-*.tar.gz && sh osat-linux/instalar.sh`.
+          - **macOS**: `…-macos-universal.zip`. The app isn't signed: the first time, right-click osat → *Open*.
+          EOF
+          fi
+      - name: Publicar
+        env:
+          GH_TOKEN: ${{ github.token }}
+        # Si la Release ya existe (el tag se volvió a subir), se reemplazan sus archivos y notas.
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" dist/* --clobber
+            gh release edit "$GITHUB_REF_NAME" --notes-file notes.md
+          else
+            gh release create "$GITHUB_REF_NAME" dist/* --title "osat ${GITHUB_REF_NAME#v}" --notes-file notes.md
+          fi

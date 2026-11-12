@@ -1,0 +1,78 @@
+package i18n
+
+// Textos de store, importer y osatfile.
+func init() {
+	for k, v := range map[string]entry{
+		"data.theConnectionIsMissing":         {es: "falta la conexión", en: "the connection is missing"},
+		"data.invalidPortOnThisPc":            {es: "puerto de esta PC inválido (1 a 65535)", en: "invalid port on this PC (1 to 65535)"},
+		"data.aRemoteForwardCanT":             {es: "un reenvío remoto no puede ir a Kubernetes", en: "a remote forward can't go to Kubernetes"},
+		"data.invalidServerPortTo":            {es: "puerto del servidor inválido (1 a 65535)", en: "invalid server port (1 to 65535)"},
+		"data.forwardDoesNotExist":            {es: "reenvío inexistente", en: "forward does not exist"},
+		"data.unknownForwardTypeQ":            {es: "tipo de reenvío desconocido: %q", en: "unknown forward type: %q"},
+		"data.invalidKubernetesResourceQ":     {es: "recurso de Kubernetes inválido: %q", en: "invalid Kubernetes resource: %q"},
+		"data.invalidForwardsJsonV":           {es: "forwards.json inválido: %v", en: "invalid forwards.json: %v"},
+		"data.typeANameForThe":                {es: "escribí un nombre para el grupo", en: "type a name for the group"},
+		"data.theGroupHasNoName":              {es: "el grupo no tiene nombre", en: "the group has no name"},
+		"data.canTMoveAGroup":                 {es: "no se puede mover un grupo dentro de sí mismo", en: "can't move a group into itself"},
+		"data.invalidPositionForTheGroup":     {es: "posición inválida para el grupo", en: "invalid position for the group"},
+		"data.sJumpsThroughSWhich":            {es: "«%s» salta a través de «%s», que está en el grupo: cambiale el salto antes de borrarlo", en: "«%s» jumps through «%s», which is in the group: change its jump host before deleting it"},
+		"data.theFolderHasNoPath":             {es: "la carpeta no tiene ruta", en: "the folder has no path"},
+		"data.theFolderIsNotPinned":           {es: "la carpeta no está fijada", en: "the folder is not pinned"},
+		"data.theConnectionIsNotIn":           {es: "la conexión no está en Favoritos", en: "the connection is not in Favorites"},
+		"data.theSnippetNeedsAName":           {es: "el snippet necesita un nombre", en: "the snippet needs a name"},
+		"data.theCommandIsEmpty":              {es: "el comando está vacío", en: "the command is empty"},
+		"data.snippetDoesNotExist":            {es: "snippet inexistente", en: "snippet does not exist"},
+		"data.unknownSnippetModeQ":            {es: "modo de snippet desconocido: %q", en: "unknown snippet mode: %q"},
+		"data.invalidSnippetsJsonV":           {es: "snippets.json inválido: %v", en: "invalid snippets.json: %v"},
+		"data.theSiteNeedsAName":              {es: "el sitio necesita un nombre", en: "the site needs a name"},
+		"data.theSiteUrlMustBe":               {es: "la dirección del sitio debe ser http:// o https:// con un host", en: "the site address must be http:// or https:// with a host"},
+		"data.siteDoesNotExist":               {es: "sitio inexistente", en: "site does not exist"},
+		"data.invalidSitesJsonV":              {es: "sites.json inválido: %v", en: "invalid sites.json: %v"},
+		"data.invalidDefaultsJsonV":           {es: "defaults.json inválido: %v", en: "invalid defaults.json: %v"},
+		"data.theHostIsRequired":              {es: "el host es obligatorio", en: "the host is required"},
+		"data.theUsernameIsRequired":          {es: "el usuario es obligatorio", en: "the username is required"},
+		"data.theInitialCommandMustBe":        {es: "el comando inicial debe ser una sola línea", en: "the initial command must be a single line"},
+		"data.enterThePathOfThe":              {es: "indicá la ruta de la clave privada", en: "enter the path of the private key"},
+		"data.theJumpHostConnectionDoes":      {es: "la conexión de salto no existe", en: "the jump host connection does not exist"},
+		"data.theConnectionCanTJump":          {es: "la conexión no puede saltar a través de sí misma (los saltos forman un ciclo)", en: "the connection can't jump through itself (the jumps form a cycle)"},
+		"data.gatewayAndJump":                 {es: "una conexión no puede usar RD Gateway y Proxy Jump a la vez", en: "a connection can't use both an RD Gateway and a Proxy Jump"},
+		"data.youCanOnlyJumpThrough":          {es: "solo se puede saltar a través de una conexión SSH", en: "you can only jump through an SSH connection"},
+		"data.invalidConnectionsJsonV":        {es: "connections.json inválido: %v", en: "invalid connections.json: %v"},
+		"data.invalidEnvironmentVariableQUse": {es: "variable de entorno inválida %q: usá NOMBRE=valor (el nombre solo lleva letras, números y _, y no empieza con número)", en: "invalid environment variable %q: use NAME=value (the name only has letters, digits and _, and doesn't start with a digit)"},
+		"data.couldnTSaveTheSecret":           {es: "no se pudo guardar el secreto en el keyring: %v", en: "couldn't save the secret in the keyring: %v"},
+		"data.tooManyChainedJumpHosts":        {es: "demasiados saltos encadenados (máximo %d)", en: "too many chained jump hosts (maximum %d)"},
+		"data.sJumpsThroughThisConnection":    {es: "«%s» salta a través de esta conexión: cambiale el salto antes de borrarla", en: "«%s» jumps through this connection: change its jump host before deleting it"},
+		"data.theWorkspaceDataIsNot":          {es: "los datos del espacio de trabajo no son un objeto JSON", en: "the workspace data is not a JSON object"},
+		"data.theWorkspaceNeedsAName":         {es: "el espacio de trabajo necesita un nombre", en: "the workspace needs a name"},
+		"data.workspaceDoesNotExist":          {es: "espacio de trabajo inexistente", en: "workspace does not exist"},
+		"data.invalidWorkspacesJsonV":         {es: "workspaces.json inválido: %v", en: "invalid workspaces.json: %v"},
+		"data.thereIsAlreadyAWorkspace":       {es: "ya hay un espacio de trabajo llamado «%s»", en: "there is already a workspace named «%s»"},
+		"data.noSavedSessionsWereFound":       {es: "no se encontraron sesiones guardadas en este equipo", en: "no saved sessions were found on this computer"},
+		"data.theFileHasNoWinscp":             {es: "el archivo no tiene sesiones de WinSCP (secciones [Sessions\\…])", en: "the file has no WinSCP sessions ([Sessions\\…] sections)"},
+		"data.unknownImportSourceQ":           {es: "origen de importación desconocido: %q", en: "unknown import source: %q"},
+		"data.invalidConfconsXmlV":            {es: "confCons.xml inválido: %v", en: "invalid confCons.xml: %v"},
+		"data.theFileHasNoSessions":           {es: "el archivo no tiene sesiones (claves HKEY_CURRENT_USER\\%s\\…)", en: "the file has no sessions (HKEY_CURRENT_USER\\%s\\… keys)"},
+		"data.theFileHasNoOpenssh":            {es: "el archivo no tiene conexiones de OpenSSH (líneas Host con un nombre sin comodines)", en: "the file has no OpenSSH connections (Host lines with a name without wildcards)"},
+		"data.tooManyNestedIncludesIn":        {es: "demasiados Include anidados en la configuración de OpenSSH", en: "too many nested Includes in the OpenSSH configuration"},
+		"data.thePasswordsAreProtectedWith":   {es: "las contraseñas están protegidas con una contraseña maestra", en: "the passwords are protected with a master password"},
+		"data.theMasterPasswordIsWrong":       {es: "la contraseña maestra es incorrecta", en: "the master password is wrong"},
+		"data.invalidEncryptedPassword":       {es: "contraseña cifrada inválida", en: "invalid encrypted password"},
+		"data.wrongPassword":                  {es: "contraseña incorrecta", en: "wrong password"},
+		"data.unknownWinscpPasswordFormat":    {es: "formato de contraseña de WinSCP desconocido", en: "unknown WinSCP password format"},
+		"data.invalidWinscpPassword":          {es: "contraseña de WinSCP inválida", en: "invalid WinSCP password"},
+		"data.wrongPasswordOrDamagedFile":     {es: "contraseña incorrecta o archivo dañado", en: "wrong password or damaged file"},
+		"data.itIsNotAnOsat":                  {es: "no es un archivo de conexiones de osat", en: "it is not an osat connections file"},
+		"data.invalidConnectionsFile":         {es: "archivo de conexiones inválido", en: "invalid connections file"},
+		"data.theFileIsFromA":                 {es: "el archivo es de una versión de osat más nueva (formato %d)", en: "the file is from a newer version of osat (format %d)"},
+		"data.invalidConnectionsFileV":        {es: "archivo de conexiones inválido: %v", en: "invalid connections file: %v"},
+	} {
+		catalog[k] = v
+	}
+}
+
+func init() {
+	catalog["data.mremotengFullEncryption"] = entry{
+		es: "el archivo de mRemoteNG está cifrado completo. En mRemoteNG, desactivá Opciones › Seguridad › «Cifrar archivo completo de conexiones», guardá y volvé a importar",
+		en: "the mRemoteNG file is fully encrypted. In mRemoteNG, turn off Options › Security › “Encrypt complete connections file”, save and import again",
+	}
+}

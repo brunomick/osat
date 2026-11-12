@@ -1,0 +1,42 @@
+name: Bug report
+description: Something doesn't work as it should.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected and what happened instead. Screenshots help.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Connect to a server over SSH
+        2. Open SFTP from the terminal tab
+        3. …
+  - type: input
+    id: version
+    attributes:
+      label: osat version
+      placeholder: "0.3.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options: [Windows, Linux, macOS]
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostic information
+      description: Settings → Copy diagnostic information. It doesn't include passwords or tokens, but check it before pasting.
+      render: text
+  - type: markdown
+    attributes:
+      value: Found a security problem? Please report it privately instead, as described in SECURITY.md.

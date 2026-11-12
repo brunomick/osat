@@ -1,0 +1,8 @@
+# El repo se usa desde Windows y desde WSL: siempre LF.
+* text=auto eol=lf
+
+# cmd.exe necesita CRLF (android/gradlew.bat).
+*.bat text eol=crlf
+
+# El manual trae sus capturas incrustadas (6 MB): que GitHub no lo cuente como código.
+osat-manual.html linguist-documentation

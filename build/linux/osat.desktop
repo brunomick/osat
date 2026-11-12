@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=OSAT
+Comment=Cliente SSH, SFTP y escritorio remoto
+Exec=osat
+Icon=osat
+Terminal=false
+Categories=Network;RemoteAccess;
+StartupWMClass=osat

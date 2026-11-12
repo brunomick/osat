@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- La O de osat, igual que el ícono de escritorio (branding/osat-logo/osat-icon.svg). Del ícono
+     adaptable (108 dp) se ve el centro de 72 dp: ahí va el cuadro de 512 del SVG (viewport de
+     512 × 108 / 72 = 768, corrido 128), así la O ocupa lo mismo que en escritorio. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="768"
+    android:viewportHeight="768">
+    <group
+        android:translateX="128"
+        android:translateY="128">
+        <path
+            android:pathData="M191,129 H321 A62,62 0 0 1 383,191 V321 A62,62 0 0 1 321,383 H191 A62,62 0 0 1 129,321 V191 A62,62 0 0 1 191,129 Z"
+            android:strokeWidth="50"
+            android:strokeColor="#ECECEC" />
+        <path
+            android:fillColor="#3DDC6F"
+            android:pathData="M220,220 H292 V292 H220 Z" />
+    </group>
+</vector>

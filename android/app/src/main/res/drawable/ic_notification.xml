@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- La O de osat en un solo color, para la barra de notificaciones. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+    <path
+        android:pathData="M191,129 H321 A62,62 0 0 1 383,191 V321 A62,62 0 0 1 321,383 H191 A62,62 0 0 1 129,321 V191 A62,62 0 0 1 191,129 Z"
+        android:strokeWidth="50"
+        android:strokeColor="#FFFFFF" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M220,220 H292 V292 H220 Z" />
+</vector>

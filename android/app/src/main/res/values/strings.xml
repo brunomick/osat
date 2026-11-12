@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">osat</string>
+    <string name="sessions_channel">Sesiones abiertas</string>
+    <plurals name="sessions_open">
+        <item quantity="one">%d sesión abierta</item>
+        <item quantity="other">%d sesiones abiertas</item>
+    </plurals>
+</resources>

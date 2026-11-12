@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>osat · Every remote session. One window.</title>
+<meta name="description" content="osat is a free, open-source SSH, SFTP and remote desktop (RDP and VNC) client for Windows, Linux and macOS. Terminals, file transfers and remote desktops side by side.">
+<meta name="theme-color" content="#0a0a0a">
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:title" content="osat · Every remote session. One window.">
+<meta property="og:description" content="Open-source SSH, SFTP and remote desktop (RDP and VNC) client for Windows, Linux and macOS.">
+<meta property="og:image" content="https://brunomick.github.io/osat/assets/og.png">
+<meta property="og:url" content="https://brunomick.github.io/osat/">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://brunomick.github.io/osat/assets/og.png">
+<link rel="alternate" hreflang="en" href="https://brunomick.github.io/osat/?lang=en">
+<link rel="alternate" hreflang="es" href="https://brunomick.github.io/osat/?lang=es">
+<script>
+  // Pick the language before paint: ?lang= wins, then the saved choice, then the browser.
+  (function () {
+    var l = new URLSearchParams(location.search).get('lang')
+    try { l = l || localStorage.getItem('osat.lang') } catch (e) {}
+    l = l || ((navigator.language || 'en').toLowerCase().indexOf('es') === 0 ? 'es' : 'en')
+    document.documentElement.lang = l === 'es' ? 'es' : 'en'
+  })()
+</script>
+<style>
+@font-face { font-family: 'JetBrains Mono'; src: url('assets/jetbrains-mono.woff2') format('woff2'); font-weight: 100 800; font-display: swap; }
+:root {
+  --ink: #0a0a0a; --graphite: #1c1c1c; --card: #121212; --steel: #2f2f2f;
+  --mist: #a6a6a6; --paper: #ececec; --signal: #3ddc6f; --signal-deep: #15803d;
+  --font: 'JetBrains Mono', Consolas, monospace;
+  --wrap: 1120px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body { background: var(--ink); color: var(--paper); font: 400 15px/1.65 var(--font); -webkit-font-smoothing: antialiased; }
+a { color: inherit; }
+img { max-width: 100%; height: auto; display: block; }
+.wrap { max-width: var(--wrap); margin: 0 auto; padding: 0 24px; }
+.wordmark { display: block; height: 22px; width: auto; }
+:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+
+/* i18n: each text exists in both languages; the other one is hidden. */
+html[lang='en'] [lang='es'], html[lang='es'] [lang='en'] { display: none !important; }
+
+/* nav */
+header.nav { position: sticky; top: 0; z-index: 10; background: rgba(10,10,10,.86); backdrop-filter: blur(10px); border-bottom: 1px solid transparent; transition: border-color .2s; }
+header.nav.scrolled { border-bottom-color: var(--steel); }
+.nav .wrap { display: flex; align-items: center; height: 64px; gap: 28px; }
+.nav nav { display: flex; gap: 24px; margin-left: auto; align-items: center; font-size: 14px; }
+.nav nav a { text-decoration: none; color: var(--paper); opacity: .85; }
+.nav nav a:hover { opacity: 1; }
+.lang { display: flex; border: 1px solid var(--steel); }
+.lang button { background: none; border: 0; color: var(--mist); font: 500 12px var(--font); padding: 5px 9px; cursor: pointer; }
+html[lang='en'] .lang [data-set='en'], html[lang='es'] .lang [data-set='es'] { background: var(--paper); color: var(--ink); }
+.btn { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font: 500 15px var(--font); padding: 13px 22px; border: 1px solid var(--steel); background: transparent; color: var(--paper); cursor: pointer; }
+.btn:hover { border-color: var(--mist); }
+.btn.primary { background: var(--signal); border-color: var(--signal); color: var(--ink); }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.small { padding: 7px 14px; font-size: 13px; }
+.nav .hide-sm { display: inline; }
+
+/* hero */
+.hero { position: relative; text-align: center; padding: 96px 0 0; overflow: hidden; }
+.hero::before { content: ''; position: absolute; inset: 0; background-image: radial-gradient(#ffffff12 1px, transparent 1.2px); background-size: 24px 24px; mask-image: linear-gradient(#000 40%, transparent 85%); -webkit-mask-image: linear-gradient(#000 40%, transparent 85%); pointer-events: none; }
+.prompt { color: var(--signal); font-size: 14px; }
+.hero h1 { font-size: clamp(38px, 7vw, 76px); font-weight: 800; line-height: 1.04; letter-spacing: -.025em; margin: 18px auto 0; }
+.hero .lead { color: var(--mist); font-size: clamp(15px, 2vw, 18px); max-width: 640px; margin: 26px auto 0; }
+.cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 36px; }
+.meta { color: #7d7d7d; font-size: 12.5px; margin-top: 18px; }
+.shot { position: relative; margin: 64px auto 0; border: 1px solid #333; border-radius: 10px; overflow: hidden; box-shadow: 0 40px 120px #000, 0 0 0 1px #000; background: var(--ink); }
+.hero .shot { max-width: 1200px; }
+.hero .glow { position: absolute; left: 50%; bottom: -260px; width: 900px; height: 500px; transform: translateX(-50%); background: radial-gradient(closest-side, rgba(61,220,111,.13), transparent); pointer-events: none; }
+
+/* sections */
+section { padding: 120px 0 0; }
+.label { color: var(--signal); font-size: 14px; }
+h2 { font-size: clamp(28px, 4vw, 42px); font-weight: 800; letter-spacing: -.02em; line-height: 1.15; margin-top: 10px; }
+.sub { color: var(--mist); max-width: 640px; margin-top: 14px; }
+
+.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 44px; }
+.card { background: var(--card); border: 1px solid #242424; padding: 26px 24px 28px; }
+.card svg { width: 28px; height: 28px; }
+.card h3 { font-size: 16px; font-weight: 700; margin-top: 16px; }
+.card p { color: var(--mist); font-size: 13.5px; margin-top: 8px; line-height: 1.6; }
+
+.feature { display: grid; grid-template-columns: 5fr 7fr; gap: 56px; align-items: center; margin-top: 96px; }
+.feature.flip { grid-template-columns: 7fr 5fr; }
+.feature.flip .text { order: 2; }
+.feature h3 { font-size: clamp(22px, 3vw, 28px); font-weight: 800; letter-spacing: -.015em; line-height: 1.2; margin-top: 8px; }
+.feature p { color: var(--mist); margin-top: 14px; }
+.feature ul { list-style: none; margin-top: 18px; color: var(--paper); font-size: 14px; }
+.feature li { padding-left: 22px; position: relative; margin-top: 8px; }
+.feature li::before { content: '>'; position: absolute; left: 0; color: var(--signal); }
+.feature .shot { margin: 0; }
+.feature.mini { margin-top: 72px; }
+.feature.mini h3 { font-size: clamp(18px, 2.4vw, 22px); }
+kbd { font: 500 12px var(--font); border: 1px solid var(--steel); background: var(--graphite); padding: 1px 6px; }
+
+.band { display: flex; justify-content: space-between; align-items: center; gap: 32px; background: var(--card); border: 1px solid #242424; padding: 44px 40px; margin-top: 96px; }
+.band h3 { font-size: 24px; font-weight: 800; }
+.band p { color: var(--mist); margin-top: 10px; max-width: 560px; font-size: 14px; }
+.chips { display: flex; flex-wrap: wrap; gap: 10px; }
+.chip { border: 1px solid var(--steel); padding: 8px 14px; font-size: 13.5px; white-space: nowrap; }
+
+.platforms { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 44px; }
+.beta { font-size: 11px; font-weight: 500; letter-spacing: 0.04em; color: #3ddc6f; border: 1px solid #3ddc6f; padding: 1px 6px; vertical-align: middle; }
+.platform { border: 1px solid #242424; background: var(--card); padding: 26px 24px; }
+.platform h3 { font-size: 17px; }
+.platform p { color: var(--mist); font-size: 13.5px; margin-top: 10px; }
+.platform code, .feature code, .card code { font: inherit; color: var(--paper); }
+
+.final { text-align: center; padding: 140px 0 120px; }
+.final h2 { margin-top: 0; }
+.final .sub { margin: 14px auto 0; }
+
+footer { border-top: 1px solid var(--steel); padding: 28px 0; font-size: 12.5px; color: #8a8a8a; }
+footer .wrap { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+footer .mark { width: 18px; height: 18px; }
+footer nav { margin-left: auto; display: flex; gap: 22px; }
+footer a { text-decoration: none; color: var(--paper); }
+
+@media (max-width: 900px) {
+  .grid, .platforms { grid-template-columns: 1fr 1fr; }
+  .feature, .feature.flip { grid-template-columns: 1fr; gap: 28px; margin-top: 72px; }
+  .feature.flip .text { order: 0; }
+  .band { flex-direction: column; align-items: flex-start; padding: 32px 26px; }
+}
+@media (max-width: 640px) {
+  .grid, .platforms { grid-template-columns: 1fr; }
+  .nav nav .hide-sm { display: none; }
+  .nav .wrap { gap: 12px; }
+  .nav nav { gap: 14px; }
+  .hero { padding-top: 64px; }
+  section { padding-top: 88px; }
+  .shot { border-radius: 6px; }
+}
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+
+<header class="nav" id="top">
+  <div class="wrap">
+    <a href="#top" aria-label="osat">
+      <svg class="wordmark" viewBox="-2 -2 476 104" role="img" aria-label="osat"><g fill="none" stroke="#ececec" stroke-width="18" stroke-linecap="square" stroke-linejoin="round"><rect x="8" y="8" width="84" height="84" rx="21"/><path d="M216,8 H153 A21,21 0 0 0 153,50 H195 A21,21 0 0 1 195,92 H132"/><path d="M256,92 V29 A21,21 0 0 1 277,8 H319 A21,21 0 0 1 340,29 V92 M256,54 H340"/><path d="M380,8 H464 M422,8 V92"/></g><rect x="33.5" y="33.5" width="33" height="33" fill="#3ddc6f"/></svg>
+    </a>
+    <nav aria-label="Main">
+      <a class="hide-sm" href="#features"><span lang="en">Features</span><span lang="es">Funciones</span></a>
+      <a class="hide-sm" href="#platforms"><span lang="en">Platforms</span><span lang="es">Plataformas</span></a>
+      <a class="hide-sm" href="https://github.com/brunomick/osat">GitHub</a>
+      <div class="lang" role="group" aria-label="Language / Idioma">
+        <button type="button" data-set="en" aria-label="English">EN</button>
+        <button type="button" data-set="es" aria-label="Español">ES</button>
+      </div>
+      <a class="btn primary small" href="https://github.com/brunomick/osat/releases/latest"><span lang="en">Download</span><span lang="es">Descargar</span></a>
+    </nav>
+  </div>
+</header>
+
+<main>
+<div class="hero">
+  <div class="wrap">
+    <p class="prompt"><span lang="en">&gt; v1.0 · free and open source</span><span lang="es">&gt; v1.0 · libre y de código abierto</span></p>
+    <h1><span lang="en">Every remote session.<br>One window.</span><span lang="es">Cada sesión remota.<br>Una sola ventana.</span></h1>
+    <p class="lead">
+      <span lang="en">osat puts your SSH terminals, SFTP file transfers and remote desktops (RDP and VNC) side by side, so you can stop juggling PuTTY, WinSCP and mRemoteNG.</span>
+      <span lang="es">osat pone tus terminales SSH, tus archivos por SFTP y tus escritorios remotos (RDP y VNC) uno al lado del otro, para que dejes de saltar entre PuTTY, WinSCP y mRemoteNG.</span>
+    </p>
+    <div class="cta">
+      <a class="btn primary" href="https://github.com/brunomick/osat/releases/latest">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="square"><path d="M12 3v12M7 10l5 5 5-5M4 20h16"/></svg>
+        <span lang="en">Download osat</span><span lang="es">Descargar osat</span>
+      </a>
+      <a class="btn" href="https://github.com/brunomick/osat">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+        <span lang="en">View on GitHub</span><span lang="es">Ver en GitHub</span>
+      </a>
+    </div>
+    <p class="meta">Windows · Linux · macOS · Android (beta) · GPL-3.0-or-later</p>
+  </div>
+  <div class="wrap">
+    <div class="shot">
+      <img lang="en" src="assets/screenshot-dark.webp" width="2400" height="1500" alt="osat with an SSH terminal, an SFTP file browser and a second terminal tiled in one window, and the server list with favorites, groups and workspaces on the left.">
+      <img lang="es" src="assets/screenshot-dark-es.webp" width="2400" height="1500" alt="osat con una terminal SSH, un explorador SFTP y otra terminal en mosaico en una sola ventana, y la lista de servidores con favoritos, grupos y espacios de trabajo a la izquierda.">
+    </div>
+  </div>
+  <div class="glow"></div>
+</div>
+
+<section id="features">
+  <div class="wrap">
+    <p class="label"><span lang="en">&gt; features</span><span lang="es">&gt; funciones</span></p>
+    <h2><span lang="en">Three tools, one app</span><span lang="es">Tres programas, una app</span></h2>
+    <p class="sub"><span lang="en">One list of servers, one place for passwords, and tabs for everything.</span><span lang="es">Una sola lista de servidores, un solo lugar para las contraseñas y pestañas para todo.</span></p>
+
+    <div class="grid">
+      <div class="card">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#ececec" stroke-width="2" stroke-linecap="square"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 10l3 2-3 2"/><path d="M13 15h4" stroke="#3ddc6f"/></svg>
+        <h3><span lang="en">SSH terminal</span><span lang="es">Terminal SSH</span></h3>
+        <p><span lang="en">Truecolor tabs that open clean, without the MOTD. Passwords, OpenSSH and <code>.ppk</code> keys, certificates and agents. Reconnects on its own when the network drops.</span><span lang="es">Pestañas truecolor que abren limpias, sin el MOTD. Contraseñas, claves OpenSSH y <code>.ppk</code>, certificados y agentes. Se reconecta sola si se cae la red.</span></p>
+      </div>
+      <div class="card">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#ececec" stroke-width="2" stroke-linecap="square"><path d="M3 5h6l2 2h10v12H3z"/><path d="M12 17v-6M9.5 13.5L12 11l2.5 2.5" stroke="#3ddc6f"/></svg>
+        <h3><span lang="en">SFTP files</span><span lang="es">Archivos SFTP</span></h3>
+        <p><span lang="en">Drag files and folders in and out, sync folders like WinSCP, search the server, zip and extract on it, and edit files in place, as root with sudo when you need to.</span><span lang="es">Arrastrá archivos y carpetas, sincronizá carpetas como en WinSCP, buscá en el servidor, comprimí y extraé ahí mismo y editá archivos, también como root con sudo.</span></p>
+      </div>
+      <div class="card">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#ececec" stroke-width="2" stroke-linecap="square"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/><rect x="10.5" y="8.5" width="3" height="3" fill="#3ddc6f" stroke="none"/></svg>
+        <h3><span lang="en">Remote desktop</span><span lang="es">Escritorio remoto</span></h3>
+        <p><span lang="en">Windows RDP and VNC in a tab on every platform, with clipboard, resized to fit. RDP also through an RD Gateway, phone approval included. No system client needed.</span><span lang="es">RDP de Windows y VNC en una pestaña, en todos los sistemas, con portapapeles y ajustados al tamaño. RDP también a través de un RD Gateway, con aprobación en el celular. Sin depender del cliente del sistema.</span></p>
+      </div>
+      <div class="card">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#ececec" stroke-width="2" stroke-linecap="square"><path d="M4 8h14M15 5l3 3-3 3"/><path d="M20 16H6M9 13l-3 3 3 3" stroke="#3ddc6f"/></svg>
+        <h3><span lang="en">Port forwarding</span><span lang="es">Reenvío de puertos</span></h3>
+        <p><span lang="en">Local, remote and SOCKS forwards, plus Kubernetes services and pods through the server's <code>kubectl</code>. One-click presets for Postgres, Redis and friends.</span><span lang="es">Reenvíos locales, remotos y SOCKS, y servicios y pods de Kubernetes con el <code>kubectl</code> del servidor. Atajos para Postgres, Redis y compañía.</span></p>
+      </div>
+      <div class="card">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#ececec" stroke-width="2" stroke-linecap="square"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 3v18M12 12h9"/><rect x="15" y="15" width="3" height="3" fill="#3ddc6f" stroke="none"/></svg>
+        <h3><span lang="en">Tiles and workspaces</span><span lang="es">Mosaico y workspaces</span></h3>
+        <p><span lang="en">Split the window any way you like; moving a tab never drops its session. Save a layout as a workspace and reopen it with one click.</span><span lang="es">Dividí la ventana como quieras; mover una pestaña no corta su sesión. Guardá una distribución como workspace y reabrila con un clic.</span></p>
+      </div>
+      <div class="card">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#ececec" stroke-width="2" stroke-linecap="square"><path d="M8 4H5v16h3"/><path d="M16 4h3v16h-3"/><path d="M9 10l2 2-2 2" stroke="#3ddc6f"/><path d="M13 15h2" stroke="#3ddc6f"/></svg>
+        <h3><span lang="en">Snippets and broadcast</span><span lang="es">Snippets y broadcast</span></h3>
+        <p><span lang="en">Saved commands with <code>{{variables}}</code>, global or per group. Type into several terminals at once when you need to.</span><span lang="es">Comandos guardados con <code>{{variables}}</code>, globales o por grupo. Escribí en varias terminales a la vez cuando haga falta.</span></p>
+      </div>
+      <div class="card">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#ececec" stroke-width="2" stroke-linecap="square"><circle cx="8" cy="12" r="4.5"/><path d="M12.5 12H21M18 12v3M21 12v2"/><rect x="6.5" y="10.5" width="3" height="3" fill="#3ddc6f" stroke="none"/></svg>
+        <h3><span lang="en">Keyring credentials</span><span lang="es">Credenciales en el keyring</span></h3>
+        <p><span lang="en">Passwords live in the system keyring, never in config files. Host keys and RDP certificates are checked, and changes are flagged.</span><span lang="es">Las contraseñas van al almacén del sistema, nunca a un archivo. Se verifican las huellas SSH y los certificados RDP, y se avisa si cambian.</span></p>
+      </div>
+      <div class="card">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#ececec" stroke-width="2" stroke-linecap="square"><path d="M12 3l8 3v6c0 5-3.5 8-8 9c-4.5-1-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-4.5" stroke="#3ddc6f"/></svg>
+        <h3><span lang="en">Jump hosts</span><span lang="es">Bastiones (ProxyJump)</span></h3>
+        <p><span lang="en">Reach internal SSH, RDP and VNC servers through a bastion, chained if needed, authenticating from your machine. No keys left on the bastion.</span><span lang="es">Llegá a servidores SSH, RDP y VNC internos a través de un bastión, encadenando saltos si hace falta y autenticando desde tu PC. Sin dejar claves en el bastión.</span></p>
+      </div>
+      <div class="card">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#ececec" stroke-width="2" stroke-linecap="square"><path d="M3 19h18"/><path d="M5 19v-4a7 7 0 0 1 14 0v4"/><rect x="10.5" y="13.5" width="3" height="3" fill="#3ddc6f" stroke="none"/></svg>
+        <h3>Claude MCP</h3>
+        <p><span lang="en">A local MCP server that lets Claude Code read and type into the terminals you choose to share, one by one. Nothing to install on your servers.</span><span lang="es">Un servidor MCP local para que Claude Code lea y escriba en las terminales que elijas compartir, de a una. Nada que instalar en los servidores.</span></p>
+      </div>
+      <div class="card">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#ececec" stroke-width="2" stroke-linecap="square"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.5 3.5 5.5 3.5 9s-1 6.5-3.5 9c-2.5-2.5-3.5-5.5-3.5-9s1-6.5 3.5-9z"/><rect x="10.5" y="10.5" width="3" height="3" fill="#3ddc6f" stroke="none"/></svg>
+        <h3><span lang="en">Websites and browser</span><span lang="es">Sitios web y navegador</span></h3>
+        <p><span lang="en">Keep your hosting and cloud panels next to your servers, with your login saved. Preview a server's ports or HTML files through SSH, without opening anything to the network.</span><span lang="es">Tené tus paneles de hosting y de la nube al lado de los servidores, con el login guardado. Mirá los puertos de un servidor o sus archivos HTML a través de SSH, sin abrir nada a la red.</span></p>
+      </div>
+      <div class="card">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#ececec" stroke-width="2" stroke-linecap="square"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><rect x="10.5" y="14" width="3" height="3" fill="#3ddc6f" stroke="none"/></svg>
+        <h3><span lang="en">Lock screen</span><span lang="es">Bloqueo con contraseña</span></h3>
+        <p><span lang="en">Optionally, osat asks for a password when it opens and after some idle minutes, or Windows Hello. Your sessions keep running behind the lock screen.</span><span lang="es">Si querés, osat pide una contraseña al abrirse y después de unos minutos sin uso, o Windows Hello. Tus sesiones siguen andando detrás de la pantalla de bloqueo.</span></p>
+      </div>
+      <div class="card">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#ececec" stroke-width="2" stroke-linecap="square"><path d="M20 12a8 8 0 1 1-2.3-5.7"/><path d="M20 4v5h-5"/><path d="M12 8v5l3 2" stroke="#3ddc6f"/></svg>
+        <h3><span lang="en">Updates itself</span><span lang="es">Se actualiza sola</span></h3>
+        <p><span lang="en">When a new version is out, osat shows what's in it and installs it with one click, then opens again updated. You can turn the check off in Settings.</span><span lang="es">Cuando sale una versión nueva, osat te muestra qué trae y la instala con un clic; después se vuelve a abrir actualizada. La búsqueda se apaga desde Ajustes.</span></p>
+      </div>
+    </div>
+
+    <div class="feature">
+      <div class="text">
+        <p class="label"><span lang="en">&gt; snippets</span><span lang="es">&gt; snippets</span></p>
+        <h3><span lang="en">The commands you type every day, one keystroke away</span><span lang="es">Los comandos de todos los días, a una tecla</span></h3>
+        <p><span lang="en">Press <kbd>Ctrl+Shift+S</kbd> in any terminal to search your snippets. Paste one to review it, or run it straight away.</span><span lang="es">Apretá <kbd>Ctrl+Shift+S</kbd> en cualquier terminal para buscar tus snippets. Pegalo para revisarlo o ejecutalo directo.</span></p>
+        <ul>
+          <li><span lang="en">Multi-line commands and <code>{{variables}}</code> osat asks for</span><span lang="es">Comandos de varias líneas y <code>{{variables}}</code> que osat pregunta</span></li>
+          <li><span lang="en">Global, or scoped to a group of servers</span><span lang="es">Globales o solo para un grupo de servidores</span></li>
+          <li><span lang="en">Run in every terminal of a broadcast</span><span lang="es">Ejecutalos en todas las terminales de un broadcast</span></li>
+        </ul>
+      </div>
+      <div class="shot"><img lang="en" src="assets/screenshot-snippets.webp" width="1780" height="1000" loading="lazy" alt="The snippets panel open over an SSH terminal, with commands grouped in folders." >
+        <img lang="es" src="assets/screenshot-snippets-es.webp" width="1780" height="1000" loading="lazy" alt="El panel de snippets abierto sobre una terminal SSH, con los comandos agrupados en carpetas." ></div>
+    </div>
+
+    <div class="feature flip">
+      <div class="text">
+        <p class="label"><span lang="en">&gt; websites</span><span lang="es">&gt; sitios web</span></p>
+        <h3><span lang="en">All your admin panels, next to your servers</span><span lang="es">Todos tus paneles de administración, al lado de tus servidores</span></h3>
+        <p><span lang="en">Save the web consoles you manage — hosting, cloud, monitoring, firewall, router, NAS — and open them in a tab, right beside your terminals. Everything you administer, reachable from one place.</span><span lang="es">Guardá las consolas web que administrás —hosting, nube, monitoreo, firewall, router, NAS— y abrilas en una pestaña, al lado de tus terminales. Todo lo que administrás, a mano en un solo lugar.</span></p>
+        <ul>
+          <li><span lang="en">Your logins stay saved between restarts</span><span lang="es">Tus logins quedan guardados entre reinicios</span></li>
+          <li><span lang="en">A real browser in a tab, next to SSH, SFTP and remote desktops</span><span lang="es">Un navegador de verdad en una pestaña, junto a SSH, SFTP y escritorios remotos</span></li>
+          <li><span lang="en">Add, reorder and search them in the sidebar</span><span lang="es">Agregalos, ordenalos y buscalos en la barra lateral</span></li>
+        </ul>
+      </div>
+      <div class="shot"><img lang="en" src="assets/screenshot-sites.webp" width="2400" height="1500" loading="lazy" alt="osat with saved admin websites in the sidebar and a hosting panel open in a tab.">
+        <img lang="es" src="assets/screenshot-sites-es.webp" width="2400" height="1500" loading="lazy" alt="osat con sitios de administración guardados en la barra lateral y un panel de hosting abierto en una pestaña."></div>
+    </div>
+
+    <div class="feature mini">
+      <div class="text">
+        <p class="label"><span lang="en">&gt; make it yours</span><span lang="es">&gt; a tu gusto</span></p>
+        <h3><span lang="en">18 themes and a terminal to your taste</span><span lang="es">18 temas y una terminal a tu gusto</span></h3>
+        <p><span lang="en">Dark or light themes for the app and the terminal, plus font, cursor and bell. Applied instantly, in English or Spanish.</span><span lang="es">Temas oscuros o claros para la app y la terminal, y fuente, cursor y campana. Se aplican al instante, en español o en inglés.</span></p>
+      </div>
+      <div class="shot"><img lang="en" src="assets/screenshot-terminal.webp" width="1914" height="840" loading="lazy" alt="osat terminal settings with the color themes and a live preview.">
+        <img lang="es" src="assets/screenshot-terminal-es.webp" width="1914" height="840" loading="lazy" alt="Los ajustes de la terminal de osat con los temas de colores y una vista previa."></div>
+    </div>
+
+    <div class="band">
+      <div>
+        <h3><span lang="en">Bring your sessions with you</span><span lang="es">Traé tus sesiones</span></h3>
+        <p><span lang="en">Import hosts, users, keys and folders from the tools you already use. Passwords stay out of it: osat asks once, then keeps them in your keyring. Move everything to another machine with an encrypted <code>.osat</code> file.</span><span lang="es">Importá servidores, usuarios, claves y carpetas de lo que ya usás. Las contraseñas no: osat las pide una vez y las guarda en el keyring. Pasá todo a otra PC con un archivo <code>.osat</code> cifrado.</span></p>
+      </div>
+      <div class="chips"><span class="chip">PuTTY</span><span class="chip">WinSCP</span><span class="chip">mRemoteNG</span><span class="chip">OpenSSH</span></div>
+    </div>
+  </div>
+</section>
+
+<section id="platforms">
+  <div class="wrap">
+    <p class="label"><span lang="en">&gt; platforms</span><span lang="es">&gt; plataformas</span></p>
+    <h2><span lang="en">Runs where you work</span><span lang="es">Funciona donde trabajás</span></h2>
+    <div class="platforms">
+      <div class="platform">
+        <h3>Windows</h3>
+        <p><span lang="en">Windows 10 and 11. Passwords in Credential Manager. Local PowerShell, cmd, WSL and Git Bash terminals.</span><span lang="es">Windows 10 y 11. Contraseñas en el Administrador de credenciales. Terminales locales de PowerShell, cmd, WSL y Git Bash.</span></p>
+      </div>
+      <div class="platform">
+        <h3>Linux</h3>
+        <p><span lang="en">GTK 3 and WebKitGTK 4.1. Passwords in the Secret Service (GNOME Keyring, KWallet). Your login shell next to the servers.</span><span lang="es">GTK 3 y WebKitGTK 4.1. Contraseñas en el Secret Service (GNOME Keyring, KWallet). Tu shell al lado de los servidores.</span></p>
+      </div>
+      <div class="platform">
+        <h3>macOS</h3>
+        <p><span lang="en">Universal build for Apple silicon and Intel. Passwords in the Keychain, <kbd>⌘</kbd> shortcuts throughout.</span><span lang="es">Build universal para Apple silicon e Intel. Contraseñas en el Llavero y atajos con <kbd>⌘</kbd>.</span></p>
+      </div>
+      <div class="platform">
+        <h3>Android <span class="beta">beta</span></h3>
+        <p><span lang="en">SSH terminal and SFTP, one screen at a time, with a key bar for Ctrl, Alt, Esc and arrows. Built from source for now.</span><span lang="es">Terminal SSH y SFTP, de a una pantalla, con barra de teclas para Ctrl, Alt, Esc y flechas. Por ahora se compila desde el código.</span></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="final">
+  <div class="wrap">
+    <h2><span lang="en">Stop juggling between tools.</span><span lang="es">Dejá de saltar entre programas.</span></h2>
+    <p class="sub"><span lang="en">osat is free software under the GPL-3.0. Download a release, or build it yourself with Go and Wails.</span><span lang="es">osat es software libre bajo GPL-3.0. Descargá una versión o compilalo vos con Go y Wails.</span></p>
+    <div class="cta">
+      <a class="btn primary" href="https://github.com/brunomick/osat/releases/latest"><span lang="en">Download osat</span><span lang="es">Descargar osat</span></a>
+      <a class="btn" href="https://github.com/brunomick/osat#build-from-source"><span lang="en">Build from source</span><span lang="es">Compilar desde el código</span></a>
+    </div>
+  </div>
+</div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <svg class="mark" viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="104" fill="#0a0a0a"/><rect x="129" y="129" width="254" height="254" rx="62" fill="none" stroke="#ececec" stroke-width="50"/><rect x="220" y="220" width="72" height="72" fill="#3ddc6f"/></svg>
+    <span>© 2026 Bruno Mick · GPL-3.0-or-later</span>
+    <nav>
+      <a href="https://github.com/brunomick/osat">GitHub</a>
+      <a href="https://github.com/brunomick/osat/blob/main/LICENSE"><span lang="en">License</span><span lang="es">Licencia</span></a>
+    </nav>
+  </div>
+</footer>
+
+<script>
+  document.querySelectorAll('.lang button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var l = b.getAttribute('data-set')
+      document.documentElement.lang = l
+      try { localStorage.setItem('osat.lang', l) } catch (e) {}
+      var u = new URL(location.href); u.searchParams.set('lang', l); history.replaceState(null, '', u)
+    })
+  })
+  var nav = document.querySelector('header.nav')
+  addEventListener('scroll', function () { nav.classList.toggle('scrolled', scrollY > 8) }, { passive: true })
+</script>
+</body>
+</html>
