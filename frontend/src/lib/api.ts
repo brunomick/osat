@@ -175,7 +175,8 @@ export interface GitStatus {
   files: GitFile[]
   head: string
   subject: string
-  when: string
+  /** Fecha del último commit, en segundos desde 1970. */
+  time: number
 }
 
 /** Lo que se sabe de la última versión publicada (app_update.go). */

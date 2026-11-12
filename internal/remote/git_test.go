@@ -21,12 +21,12 @@ func TestParseGitStatus(t *testing.T) {
 		"? notas con espacios.md",
 		"",
 	}, "\x00")
-	out := "/srv/infra" + rs + porcelain + rs + "git@github.com:acme/infra.git\n" + rs + "a3f9c1\x1fSubir réplicas\x1f20 minutes ago\n"
+	out := "/srv/infra" + rs + porcelain + rs + "git@github.com:acme/infra.git\n" + rs + "a3f9c1\x1fSubir réplicas\x1f1794500000\n"
 	st := parseGitStatus(out)
 	want := GitStatus{
 		IsRepo: true, Root: "/srv/infra", Branch: "main", Upstream: "origin/main", Ahead: 2, Behind: 1,
 		Remote: "git@github.com:acme/infra.git", Host: "github",
-		Head: "a3f9c1", Subject: "Subir réplicas", When: "20 minutes ago",
+		Head: "a3f9c1", Subject: "Subir réplicas", Time: 1794500000,
 		Files: []GitFile{
 			{Path: "docker-compose.yml", X: ".", Y: "M"},
 			{Path: "k8s/deployment.yaml", X: "M", Y: "."},

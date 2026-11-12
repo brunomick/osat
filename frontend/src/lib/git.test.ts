@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { GitStatus } from './api'
-import { changeCount, discardSets, gitLists, letterClass, repoName, treeMarks } from './git'
+import { changeCount, discardSets, gitLists, letterClass, relTime, repoName, treeMarks } from './git'
 
 const status = (files: GitStatus['files'], root = '/srv/infra'): GitStatus => ({
   isRepo: true,
@@ -14,7 +14,7 @@ const status = (files: GitStatus['files'], root = '/srv/infra'): GitStatus => ({
   files,
   head: '',
   subject: '',
-  when: '',
+  time: 0,
 })
 
 describe('gitLists', () => {
@@ -77,6 +77,13 @@ describe('repoName', () => {
     ['ssh://git@gitlab.local:2222/ops/deploy', 'ops/deploy'],
     ['/srv/git/infra.git', 'git/infra'],
   ])('%s', (url, want) => expect(repoName(url)).toBe(want))
+})
+
+it('relTime en el idioma de osat', () => {
+  const now = 1_800_000_000_000
+  expect(relTime(now / 1000 - 300, 'es', now)).toBe('hace 5 minutos')
+  expect(relTime(now / 1000 - 7200, 'en', now)).toBe('2 hours ago')
+  expect(relTime(now / 1000 - 86400, 'es', now)).toBe('ayer')
 })
 
 it('discardSets separa los archivos nuevos', () => {

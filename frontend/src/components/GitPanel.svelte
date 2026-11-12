@@ -1,9 +1,9 @@
 <script lang="ts">
   import Icon from '../lib/Icon.svelte'
-  import ContextMenu, { type MenuItem } from './ContextMenu.svelte'
+  import type { MenuItem } from './ContextMenu.svelte'
   import { api, errorText, parseError, type GitStatus } from '../lib/api'
-  import { discardSets, gitLists, hostLabel, letterClass, repoName, type GitItem } from '../lib/git'
-  import { t, tr } from '../lib/i18n'
+  import { discardSets, gitLists, hostLabel, letterClass, relTime, repoName, type GitItem } from '../lib/git'
+  import { locale, t, tr } from '../lib/i18n'
   import { confirmDialog, promptDialog, questionsDialog } from '../lib/dialog'
   import { toast } from '../lib/stores'
 
@@ -18,10 +18,11 @@
   export let refresh: (reload?: string[] | 'all') => Promise<void>
   /** Abre los cambios de un archivo (o el archivo, con file). */
   export let open: (item: GitItem, file?: boolean) => void
+  /** Muestra un menú (lo dibuja RepoView: este panel puede estar oculto). */
+  export let showMenu: (m: { x: number; y: number; items: MenuItem[] }) => void
 
   let message = ''
   let busy = ''
-  let menu: { x: number; y: number; items: MenuItem[] } | null = null
   const cancelled = new Error('cancelled') // el usuario cerró una pregunta: no es un error que haya que mostrar
 
   $: lists = gitLists(status?.files ?? [])
@@ -197,7 +198,7 @@
     } catch (e) {
       return toast(errorText(e), 'error')
     }
-    menu = {
+    showMenu({
       x,
       y,
       items: [
@@ -210,12 +211,12 @@
           action: () => checkout(b, false),
         })),
       ],
-    }
+    })
   }
 
   function moreMenu(ev: MouseEvent) {
     const r = (ev.currentTarget as HTMLElement).getBoundingClientRect()
-    menu = {
+    showMenu({
       x: r.left,
       y: r.bottom,
       items: [
@@ -228,12 +229,12 @@
         { label: tr('git.switchBranch'), icon: 'branch', action: () => branchMenu(ev) },
         { label: tr('git.newBranch'), icon: 'plus', action: newBranch },
       ],
-    }
+    })
   }
 
   function rowMenu(ev: MouseEvent, it: GitItem) {
     ev.preventDefault()
-    menu = {
+    showMenu({
       x: ev.clientX,
       y: ev.clientY,
       items: [
@@ -245,7 +246,7 @@
           : { label: tr('git.stage'), icon: 'plus', action: () => stage([it]) },
         ...(it.staged ? [] : [{ label: tr('git.discard'), icon: 'undo', danger: true, action: () => discard([it]) }]),
       ],
-    }
+    })
   }
 
   function keydown(e: KeyboardEvent) {
@@ -347,15 +348,11 @@
         <p class="behind"><Icon name="download" size={12} />{status.behind === 1 ? $t('git.behindOne') : $t('git.behind', { n: status.behind })}</p>
       {/if}
       <p class="last" title={status.subject}>
-        {status.head ? $t('git.lastCommit', { hash: status.head, when: status.when }) : $t('git.noCommits')}
+        {status.head ? $t('git.lastCommit', { hash: status.head, when: relTime(status.time, $locale) }) : $t('git.noCommits')}
       </p>
     </div>
   {/if}
 </div>
-
-{#if menu}
-  <ContextMenu {...menu} on:close={() => (menu = null)} />
-{/if}
 
 <style>
   .git {

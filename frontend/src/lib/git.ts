@@ -87,6 +87,22 @@ export function repoName(url: string): string {
   return m ? m[1] : url
 }
 
+/** "hace 5 minutos" / "5 minutes ago" de una fecha en segundos desde 1970, en el idioma lang. */
+export function relTime(seconds: number, lang: string, now = Date.now()): string {
+  const diff = Math.round(seconds - now / 1000)
+  const units: [Intl.RelativeTimeFormatUnit, number][] = [
+    ['year', 31536000],
+    ['month', 2592000],
+    ['week', 604800],
+    ['day', 86400],
+    ['hour', 3600],
+    ['minute', 60],
+  ]
+  const fmt = new Intl.RelativeTimeFormat(lang, { numeric: 'auto' })
+  for (const [unit, size] of units) if (Math.abs(diff) >= size) return fmt.format(Math.round(diff / size), unit)
+  return fmt.format(diff, 'second')
+}
+
 /** Rutas para descartar, separadas: las que tienen seguimiento vuelven atrás y las nuevas se borran. */
 export function discardSets(items: GitItem[]): { tracked: string[]; untracked: string[] } {
   const tracked: string[] = []

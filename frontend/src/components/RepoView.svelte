@@ -207,19 +207,38 @@
     current = t.id
   }
 
-  // Un diff abierto toma la versión nueva de su archivo cuando cambia el estado (o se cierra si ya no tiene cambios).
+  // Un diff abierto sigue a su archivo cuando cambia el estado: si ya no tiene cambios en su lista pasa a la
+  // otra (de "cambios" a "preparado" al prepararlo, como en VS Code), y si no tiene cambios en ninguna se cierra.
   $: if (git) syncDiffs(git)
   function syncDiffs(st: GitStatus) {
     let changed = false
+    const next: Open[] = []
     for (const o of opened) {
-      if (!o.diff) continue
+      if (!o.diff) {
+        next.push(o)
+        continue
+      }
       const f = st.files?.find((x) => x.path === o.diff!.file.path)
-      if (f && (f.x !== o.diff.file.x || f.y !== o.diff.file.y)) {
-        o.diff = { ...o.diff, file: f }
+      const inStaged = !!f && f.x !== '.' && f.x !== '?' && f.x !== 'U'
+      const inChanges = !!f && (f.y !== '.' || f.x === '?' || f.x === 'U')
+      const staged = o.diff.staged ? (inStaged ? true : inChanges ? false : null) : inChanges ? false : inStaged ? true : null
+      if (staged === null || !f) {
+        if (current === o.tab.id) current = null
+        changed = true
+        continue
+      }
+      if (staged !== o.diff.staged || f.x !== o.diff.file.x || f.y !== o.diff.file.y) {
+        const fname = o.tab.path?.slice(o.tab.path.lastIndexOf('/') + 1) ?? f.path
+        o.diff = { file: f, staged, letter: o.diff.letter }
+        o.tab = { ...o.tab, title: tr(staged ? 'git.stagedOf' : 'git.changesOf', { name: fname }) }
         changed = true
       }
+      next.push(o)
     }
-    if (changed) opened = opened
+    if (changed) {
+      opened = next
+      if (current === null) current = opened[opened.length - 1]?.tab.id ?? null
+    }
   }
 
   // sudo: como root; el editor lo lee con sudo (y pide la contraseña si hace falta).
@@ -444,7 +463,7 @@
       </div>
       <div class="explorer" style="width: {treeWidth}px">
         <div class="pane" class:hidden={side !== 'git'}>
-          <GitPanel bind:this={gitPanel} {sessionId} status={git} hasDirty={anyDirty} refresh={refreshGit} open={openGitItem} />
+          <GitPanel bind:this={gitPanel} {sessionId} status={git} hasDirty={anyDirty} refresh={refreshGit} open={openGitItem} showMenu={(m) => (menu = m)} />
         </div>
         <div class="pane" class:hidden={side !== 'files'}>
           <div class="head">

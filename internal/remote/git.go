@@ -56,7 +56,7 @@ type GitStatus struct {
 	Files    []GitFile `json:"files"`
 	Head     string    `json:"head"`    // hash corto del último commit ("" si no hay commits)
 	Subject  string    `json:"subject"` // su título
-	When     string    `json:"when"`    // hace cuánto (como lo dice git, en inglés)
+	Time     int64     `json:"time"`    // fecha del commit (segundos desde 1970)
 }
 
 // gitRun corre script (sh) en la carpeta dir del servidor y devuelve stdout, el código de salida y stderr.
@@ -166,7 +166,7 @@ git status --porcelain=v2 --branch -z --untracked-files=all || exit 5
 printf '\036'
 git remote get-url origin 2>/dev/null
 printf '\036'
-git log -1 --format='%h%x1f%s%x1f%cr' 2>/dev/null
+git log -1 --format='%h%x1f%s%x1f%ct' 2>/dev/null
 exit 0`, nil, gitTimeout, 0)
 	if err != nil {
 		return GitStatus{}, err
@@ -226,7 +226,8 @@ func parseGitStatus(out string) GitStatus {
 	st.Remote = strings.TrimSpace(parts[2])
 	st.Host = remoteHost(st.Remote)
 	if f := strings.SplitN(strings.TrimSpace(parts[3]), "\x1f", 3); len(f) == 3 {
-		st.Head, st.Subject, st.When = f[0], f[1], f[2]
+		st.Head, st.Subject = f[0], f[1]
+		st.Time, _ = strconv.ParseInt(strings.TrimSpace(f[2]), 10, 64)
 	}
 	return st
 }
