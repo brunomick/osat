@@ -4,6 +4,17 @@ Todos los cambios importantes de osat se anotan acá.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
+## [1.1.0-beta.1] - 2026-11-12
+
+Versión beta: trae funciones nuevas que todavía se están probando.
+
+### Agregado
+
+- **Control de versiones en la pestaña Repositorio**, como el panel de git de VS Code: los archivos modificados, nuevos y borrados se marcan en el árbol; en el panel nuevo ves lo preparado y lo que cambió, hacés commit, pull y push, y cambiás o creás ramas. Funciona con el git del servidor, por la misma conexión SSH.
+- **Ver los cambios de un archivo** antes de hacer commit, lado a lado o unificado.
+- **Barra de estado del repositorio**: la rama, los commits sin pushear y por traer, y de dónde es el remoto (GitHub, GitLab, Bitbucket u otro).
+- **Recibir versiones beta** (Ajustes → General): si lo activás, osat te ofrece también las betas como esta, además de las versiones estables.
+
 ## [1.0.0] - 2026-11-12
 
 Primera versión estable de osat.

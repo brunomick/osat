@@ -11,7 +11,7 @@
   },
   "info": {
     "productName": "OSAT",
-    "productVersion": "1.0.0",
+    "productVersion": "1.1.0",
     "copyright": "Copyright (C) 2026 Bruno Mick. Licencia GPL-3.0-or-later.",
     "comments": "Cliente SSH/SFTP todo en uno"
   }

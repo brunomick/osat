@@ -153,6 +153,31 @@ export interface Settings {
   }
 }
 
+/** Un archivo con cambios (internal/remote/git.go). x: estado en lo preparado, y: en la copia de trabajo
+ * (M modificado, A agregado, D borrado, R renombrado, C copiado, U en conflicto, ? sin seguimiento, . sin cambios). */
+export interface GitFile {
+  path: string
+  origPath?: string
+  x: string
+  y: string
+}
+
+/** Estado del repositorio git que contiene una carpeta del servidor. */
+export interface GitStatus {
+  isRepo: boolean
+  root: string
+  branch: string
+  upstream: string
+  ahead: number
+  behind: number
+  remote: string
+  host: '' | 'github' | 'gitlab' | 'bitbucket' | 'other'
+  files: GitFile[]
+  head: string
+  subject: string
+  when: string
+}
+
 /** Lo que se sabe de la última versión publicada (app_update.go). */
 export interface UpdateInfo {
   current: string
@@ -489,6 +514,7 @@ export interface OsatError {
     | 'LOCK_TOO_SHORT'
     | 'LOCK_STORE_UNAVAILABLE'
     | 'LOCK_NOT_ENABLED'
+    | 'GIT_IDENTITY'
   message: string
   data?: Record<string, string>
 }
@@ -764,6 +790,23 @@ export const api = {
   workspaceSave: (id: string, name: string, data: unknown): Promise<NamedWorkspace> => app().WorkspaceSave(id, name, data),
   workspaceRename: (id: string, name: string): Promise<void> => app().WorkspaceRename(id, name),
   workspaceDelete: (id: string): Promise<void> => app().WorkspaceDelete(id),
+  gitStatus: (sessionId: string, dir: string): Promise<GitStatus> => app().GitStatus(sessionId, dir),
+  gitStage: (sessionId: string, root: string, paths: string[]): Promise<void> => app().GitStage(sessionId, root, paths),
+  gitUnstage: (sessionId: string, root: string, paths: string[]): Promise<void> => app().GitUnstage(sessionId, root, paths),
+  gitDiscard: (sessionId: string, root: string, tracked: string[], untracked: string[]): Promise<void> =>
+    app().GitDiscard(sessionId, root, tracked, untracked),
+  gitCommit: (sessionId: string, root: string, message: string): Promise<void> => app().GitCommit(sessionId, root, message),
+  gitSetIdentity: (sessionId: string, root: string, name: string, email: string): Promise<void> =>
+    app().GitSetIdentity(sessionId, root, name, email),
+  gitPull: (sessionId: string, root: string): Promise<void> => app().GitPull(sessionId, root),
+  gitPush: (sessionId: string, root: string): Promise<void> => app().GitPush(sessionId, root),
+  gitFetch: (sessionId: string, root: string): Promise<void> => app().GitFetch(sessionId, root),
+  gitBranches: (sessionId: string, root: string): Promise<string[]> => app().GitBranches(sessionId, root),
+  gitCheckout: (sessionId: string, root: string, name: string, create: boolean): Promise<void> =>
+    app().GitCheckout(sessionId, root, name, create),
+  /** Contenido de un archivo en el último commit (ref "HEAD") o en lo preparado (ref ""). */
+  gitFileAt: (sessionId: string, root: string, ref: '' | 'HEAD', path: string): Promise<{ text: string; exists: boolean }> =>
+    app().GitFileAt(sessionId, root, ref, path),
   k8sNamespaces: (sessionId: string): Promise<K8sNamespaces> => app().K8sNamespaces(sessionId),
   k8sResources: (sessionId: string, namespace: string): Promise<K8sItem[]> => app().K8sResources(sessionId, namespace),
   /** Busca en dir y sus subcarpetas (nombre con comodines; contains = texto del contenido, opcional). Devuelve la carpeta real
