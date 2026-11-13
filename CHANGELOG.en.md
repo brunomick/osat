@@ -4,6 +4,12 @@ The important changes in osat, in English. Versions before 0.4.0 are only in the
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.1.2] - 2026-11-13
+
+### Fixed
+
+- **On Linux, osat shows its logo** in the applications menu and the taskbar, instead of a generic icon. If you already had it installed, run this version's `instalar.sh` again.
+
 ## [1.1.1] - 2026-11-13
 
 ### Changed

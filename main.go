@@ -27,6 +27,12 @@ import (
 //go:embed all:frontend/dist
 var assets embed.FS
 
+// El ícono de la ventana en Linux: sin él, el escritorio muestra uno genérico si no asocia la
+// ventana con el .desktop (por ejemplo, si se abre el programa sin haber corrido instalar.sh).
+//
+//go:embed build/appicon.png
+var appIcon []byte
+
 func main() {
 	defer applog.Recover("main")
 	if openUserInstall() {
@@ -101,6 +107,7 @@ func main() {
 		// Wails usa si Linux es nil; con un Linux propio hay que pedirlo.
 		Linux: &linux.Options{
 			ProgramName:      "osat",
+			Icon:             appIcon,
 			WebviewGpuPolicy: linux.WebviewGpuPolicyNever,
 		},
 	})

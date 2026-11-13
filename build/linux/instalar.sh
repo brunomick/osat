@@ -10,9 +10,11 @@ if ! ldconfig -p | grep -q 'libwebkit2gtk-4.1.so.0'; then
 fi
 
 install -Dm755 osat "$HOME/.local/bin/osat"
+# El .desktop apunta al ícono con la ruta completa: la carpeta 1024x1024 no está en la lista del
+# tema hicolor de muchas distribuciones, y con Icon=osat el menú mostraba un ícono genérico.
 install -Dm644 osat.png "$HOME/.local/share/icons/hicolor/1024x1024/apps/osat.png"
 mkdir -p "$HOME/.local/share/applications"
-sed "s|^Exec=.*|Exec=$HOME/.local/bin/osat|" osat.desktop > "$HOME/.local/share/applications/osat.desktop"
+sed -e "s|^Exec=.*|Exec=$HOME/.local/bin/osat|" -e "s|^Icon=.*|Icon=$HOME/.local/share/icons/hicolor/1024x1024/apps/osat.png|" osat.desktop > "$HOME/.local/share/applications/osat.desktop"
 update-desktop-database "$HOME/.local/share/applications" 2>/dev/null || true
 
 echo "Listo: buscá \"OSAT\" en el menú de aplicaciones."
