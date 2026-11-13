@@ -4,6 +4,14 @@ The important changes in osat, in English. Versions before 0.4.0 are only in the
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.1.1-beta.1] - 2026-11-13
+
+Beta version: it brings changes that are still being tested.
+
+### Changed
+
+- **On Windows, osat installs and updates without asking for administrator permissions**: the installer puts it in your user folder (`%LOCALAPPDATA%\Programs\OSAT`). If you had it installed in Program Files, the next update asks for permissions one last time; the one after that moves to your user folder and from then on it doesn't ask again.
+
 ## [1.1.0] - 2026-11-13
 
 ### Added

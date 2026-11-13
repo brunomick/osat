@@ -29,6 +29,9 @@ var assets embed.FS
 
 func main() {
 	defer applog.Recover("main")
+	if openUserInstall() {
+		return
+	}
 
 	// Primero los ajustes (sin registrar nada: el log todavía no existe), después el log con
 	// su nivel y recién ahí lo que haya que contar. Si el log no se puede abrir, osat sigue sin él.

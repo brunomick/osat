@@ -4,6 +4,14 @@ Todos los cambios importantes de osat se anotan acá.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
+## [1.1.1-beta.1] - 2026-11-13
+
+Versión beta: trae cambios que todavía se están probando.
+
+### Cambiado
+
+- **En Windows, osat se instala y se actualiza sin pedir permisos de administrador**: el instalador lo pone en tu carpeta de usuario (`%LOCALAPPDATA%\Programs\OSAT`). Si lo tenías instalado en Archivos de programa, la próxima actualización pide permisos una última vez; la siguiente ya pasa a tu carpeta de usuario y desde ahí no los vuelve a pedir.
+
 ## [1.1.0] - 2026-11-13
 
 ### Agregado

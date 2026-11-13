@@ -9,18 +9,60 @@ import (
 	"strings"
 	"syscall"
 
+	"golang.org/x/sys/windows/registry"
+
 	"osat/internal/i18n"
 )
 
 // ErrNotWritable no se da en Windows (sin permisos se usa el instalador); está para que el código común compile igual.
 var ErrNotWritable = i18n.Err("update.notWritable")
 
-// Detect dice cómo se actualiza este osat: si su carpeta se puede escribir (el .zip portátil, o una
-// copia suelta) se reemplaza osat.exe; si no (instalado en Archivos de programa), se corre el instalador.
+// uninstallKey es donde el instalador (build/windows/installer/project.nsi) anota la instalación.
+const uninstallKey = `Software\Microsoft\Windows\CurrentVersion\Uninstall\OSAT`
+
+// userInstallDir es la carpeta de la instalación para este usuario, o "" si no hay.
+func userInstallDir() string {
+	k, err := registry.OpenKey(registry.CURRENT_USER, uninstallKey, registry.QUERY_VALUE)
+	if err != nil {
+		return ""
+	}
+	defer k.Close()
+	dir, _, err := k.GetStringValue("InstallLocation")
+	if err != nil {
+		return ""
+	}
+	return dir
+}
+
+// UserInstallExe devuelve el osat instalado para este usuario cuando este es otro que no se puede
+// actualizar sin permisos: la copia vieja de Archivos de programa, que tiene que abrir el nuevo (sus
+// accesos directos siguen apuntando a ella y no se pueden borrar sin permisos de administrador).
+func UserInstallExe() (string, bool) {
+	exe, err := executable()
+	if err != nil {
+		return "", false
+	}
+	dir := userInstallDir()
+	if dir == "" || strings.EqualFold(filepath.Clean(dir), filepath.Dir(exe)) || writableDir(filepath.Dir(exe)) {
+		return "", false
+	}
+	target := filepath.Join(dir, "osat.exe")
+	if _, err := os.Stat(target); err != nil {
+		return "", false
+	}
+	return target, true
+}
+
+// Detect dice cómo se actualiza este osat. Instalado para el usuario, o en Archivos de programa (las
+// versiones hasta la 1.1.0), se corre el instalador, que no pide permisos y deja osat instalado para
+// el usuario. Si no, es el .zip portátil o una copia suelta: se reemplaza osat.exe.
 func Detect() (Kind, error) {
 	exe, err := executable()
 	if err != nil {
 		return "", err
+	}
+	if dir := userInstallDir(); dir != "" && strings.EqualFold(filepath.Clean(dir), filepath.Dir(exe)) {
+		return KindWindowsInstaller, nil
 	}
 	if writableDir(filepath.Dir(exe)) {
 		return KindWindowsPortable, nil
@@ -69,11 +111,12 @@ for ($i = 0; $i -lt 60; $i++) {
 Start-Process -FilePath %s
 Remove-Item -LiteralPath %s -Recurse -Force`, pid, psq(newExe), psq(exe), psq(exe), psq(tmp))
 	} else {
-		// El instalador pide permisos de administrador (Windows muestra el aviso) y corre sin preguntas (/S).
-		// Si se cancela el aviso, vuelve a abrir la versión que estaba.
+		// El instalador corre sin preguntas (/S) y sin permisos de administrador: instala para el usuario.
+		// Después se abre el osat de siempre; si era la copia de Archivos de programa, esa abre la
+		// instalada para el usuario (UserInstallExe).
 		script = fmt.Sprintf(`$ErrorActionPreference = 'SilentlyContinue'
 Wait-Process -Id %d -Timeout 60
-try { Start-Process -FilePath %s -ArgumentList '/S' -Verb RunAs -Wait -ErrorAction Stop } catch {}
+Start-Process -FilePath %s -ArgumentList '/S' -Wait
 Start-Process -FilePath %s
 Remove-Item -LiteralPath %s -Recurse -Force`, pid, psq(dl), psq(exe), psq(tmp))
 	}

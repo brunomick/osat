@@ -202,7 +202,7 @@ type Kind string
 
 const (
 	KindWindowsPortable  Kind = "windows-portable"  // reemplaza osat.exe en su carpeta
-	KindWindowsInstaller Kind = "windows-installer" // corre el instalador (la carpeta pide permisos de administrador)
+	KindWindowsInstaller Kind = "windows-installer" // corre el instalador (instala para el usuario, sin permisos)
 	KindLinux            Kind = "linux"
 	KindMac              Kind = "macos"
 )

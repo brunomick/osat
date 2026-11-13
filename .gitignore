@@ -15,3 +15,7 @@ _local/
 CLAUDE.md
 .claude/
 .kiro/
+
+# Los genera wails build -nsis (el que se edita es build/windows/installer/project.nsi).
+build/windows/installer/wails_tools.nsh
+build/windows/installer/tmp/
