@@ -4,6 +4,23 @@ Todos los cambios importantes de osat se anotan acá.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
+## [1.1.1] - 2026-11-13
+
+### Cambiado
+
+- **En Windows, osat se instala y se actualiza sin pedir permisos de administrador**: el instalador lo pone en tu carpeta de usuario (`%LOCALAPPDATA%\Programs\OSAT`) y las actualizaciones lo reemplazan ahí mismo, sin preguntar.
+
+### Cómo pasar a esta versión en Windows
+
+Si instalaste osat con el instalador (la 1.1.0 o una anterior, en Archivos de programa):
+
+1. **Desinstalá la versión que tenés**: *Configuración → Aplicaciones → Aplicaciones instaladas → OSAT → Desinstalar*. Este paso pide permisos de administrador una última vez, porque esa versión se instaló con ellos.
+2. **Instalá esta versión** con `osat-v1.1.1-windows-x64-setup.exe`. No pide permisos de administrador.
+
+Tus servidores, ajustes y contraseñas no se pierden: están guardados aparte y osat los encuentra al abrir.
+
+Si usás la versión portátil (`.zip`), no hace falta hacer nada: se actualiza sola.
+
 ## [1.1.1-beta.2] - 2026-11-13
 
 Versión beta: trae cambios que todavía se están probando.
