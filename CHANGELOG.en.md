@@ -4,6 +4,14 @@ The important changes in osat, in English. Versions before 0.4.0 are only in the
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.1.1-beta.2] - 2026-11-13
+
+Beta version: it brings changes that are still being tested.
+
+### Fixed
+
+- **On Windows, osat recognizes its installation**: when it updates it runs the installer, so *Installed apps* shows the new version.
+
 ## [1.1.1-beta.1] - 2026-11-13
 
 Beta version: it brings changes that are still being tested.

@@ -17,8 +17,9 @@ import (
 // ErrNotWritable no se da en Windows (sin permisos se usa el instalador); está para que el código común compile igual.
 var ErrNotWritable = i18n.Err("update.notWritable")
 
-// uninstallKey es donde el instalador (build/windows/installer/project.nsi) anota la instalación.
-const uninstallKey = `Software\Microsoft\Windows\CurrentVersion\Uninstall\OSAT`
+// uninstallKey es donde el instalador (build/windows/installer/project.nsi) anota la instalación: Wails
+// la llama con la empresa y el producto, y la empresa, si wails.json no la dice, es el nombre del proyecto.
+const uninstallKey = `Software\Microsoft\Windows\CurrentVersion\Uninstall\osatOSAT`
 
 // userInstallDir es la carpeta de la instalación para este usuario, o "" si no hay.
 func userInstallDir() string {

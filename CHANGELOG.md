@@ -4,6 +4,14 @@ Todos los cambios importantes de osat se anotan acá.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
+## [1.1.1-beta.2] - 2026-11-13
+
+Versión beta: trae cambios que todavía se están probando.
+
+### Corregido
+
+- **En Windows, osat reconoce su instalación**: al actualizarse corre el instalador, así *Aplicaciones instaladas* muestra la versión nueva.
+
 ## [1.1.1-beta.1] - 2026-11-13
 
 Versión beta: trae cambios que todavía se están probando.
