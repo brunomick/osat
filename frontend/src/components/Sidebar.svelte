@@ -4,6 +4,7 @@
   import { createEventDispatcher, onDestroy, onMount } from 'svelte'
   import Icon from '../lib/Icon.svelte'
   import { treeNav } from '../lib/treenav'
+  import { toggleVpn, vpn } from '../lib/vpn'
   import LogoMark from '../lib/LogoMark.svelte'
   import ContextMenu, { type MenuItem } from './ContextMenu.svelte'
   import ConnRow from './ConnRow.svelte'
@@ -610,6 +611,19 @@
     <button class="icon" title={$tl('sidebar.snippetsTip', { keys: keys('Ctrl+Shift+S') })} aria-label={$tl('sidebar.snippets')} on:click={openSnippets} on:contextmenu={snippetsMenu}>
       <Icon name="code" size={15} />
     </button>
+    <button
+      class="icon vpn {$vpn?.enabled ? $vpn.status.state : 'off'}"
+      title={!$vpn?.configured
+        ? $tl('sidebar.vpnNotConfigured')
+        : !$vpn.enabled
+          ? $tl('sidebar.vpnOff')
+          : $tl(`sidebar.vpn_${$vpn.status.state}`, { server: $vpn.status.server ?? '', address: $vpn.status.address ?? '', error: $vpn.status.error ?? '' })}
+      aria-label={$tl('sidebar.vpn')}
+      aria-pressed={!!$vpn?.enabled}
+      on:click={toggleVpn}
+    >
+      <Icon name="shield" size={15} filled={!!$vpn?.enabled && $vpn.status.state === 'on'} />
+    </button>
     <button class="icon" title={$tl('sidebar.settingsTip', { keys: keys('Ctrl+,') })} aria-label={$tl('sidebar.settings')} on:click={() => openAppTab('settings')}>
       <Icon name="gear" size={15} />
     </button>
@@ -957,6 +971,17 @@
   }
   header > .icon:hover {
     color: var(--text);
+  }
+  /* VPN: verde activa, amarillo conectando, rojo si no conecta (y nada sale por fuera). */
+  header > .vpn.on {
+    color: var(--success);
+  }
+  header > .vpn.connecting {
+    color: var(--warning);
+  }
+  header > .vpn.noResponse,
+  header > .vpn.error {
+    color: var(--danger);
   }
   header > .add {
     color: var(--text);
