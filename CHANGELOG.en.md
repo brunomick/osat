@@ -4,6 +4,15 @@ The important changes in osat, in English. Versions before 0.4.0 are only in the
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.1.0] - 2026-11-13
+
+### Added
+
+- **Source control in the Repository tab**, like VS Code's git panel: modified, new and deleted files are marked in the tree; in the new panel you see what's staged and what changed, commit, pull and push, and switch or create branches. It works with the server's git, over the same SSH connection.
+- **See a file's changes** before committing, side by side or unified.
+- **Repository status bar**: the branch, the commits not pushed and to pull, and where the remote is (GitHub, GitLab, Bitbucket or other).
+- **Get beta versions** (Settings → General): if you turn it on, osat also offers you betas, besides the stable versions.
+
 ## [1.1.0-beta.1] - 2026-11-12
 
 Beta version: it brings new features that are still being tested.
