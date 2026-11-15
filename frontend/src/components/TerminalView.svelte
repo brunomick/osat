@@ -14,6 +14,7 @@
   import { reconnect, type Reconnector } from '../lib/reconnect'
   import { isAndroid, keys } from '../lib/platform'
   import { resolve } from '../lib/termthemes'
+  import { oscCwd } from '../lib/termcwd'
   import { uiTheme } from '../lib/theme'
   import { closeTab, connections, handoffs, LOCAL, patchTab, saveTextRequest, settings, snippetsRequest, tabs, toast, type Tab } from '../lib/stores'
   import ContextMenu, { type MenuItem } from './ContextMenu.svelte'
@@ -486,6 +487,15 @@
     search.onDidChangeResults((r) => {
       if (searchOpen && query) result = { index: r.resultIndex, count: r.resultCount }
     })
+    // Terminal de este equipo: la shell avisa su carpeta en cada prompt (lib/termcwd); la usa "Explorar esta carpeta".
+    if (tab.connId === LOCAL) {
+      term.parser.registerOscHandler(9, (data) => {
+        const dir = oscCwd(data)
+        if (dir === null) return false
+        if (dir !== tab.cwd) patchTab(tab.id, { cwd: dir })
+        return true
+      })
+    }
     term.open(host)
     // Copiar al seleccionar (como PuTTY): al soltar el mouse, lo seleccionado va al portapapeles.
     term.element?.addEventListener('mouseup', () => {

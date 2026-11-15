@@ -75,7 +75,8 @@ export interface Tab {
   shell?: string
   /** Terminal compartida con Claude Code (puede leerla y escribir en ella). Vale solo para la sesión actual. */
   shared?: boolean
-  /** Para SFTP y "Este equipo": carpeta que se está mostrando (la usa la barra lateral). */
+  /** Para SFTP y "Este equipo": carpeta que se está mostrando (la usa la barra lateral).
+   * Para una terminal de este equipo: la carpeta en la que está la shell (la avisa en cada prompt). */
   cwd?: string
   /** Para el editor: archivo remoto abierto y si tiene cambios sin guardar.
    * Para un repositorio: la carpeta raíz. Para el navegador: el archivo a mostrar (con initialDir como raíz del sitio). */
@@ -566,6 +567,12 @@ export function openPinnedDir(path: string) {
   const open = get(tabs).find((t) => t.kind === 'local' && t.cwd === path)
   if (open) activeTabId.set(open.id)
   else openLocal(path)
+}
+
+/** La carpeta de una terminal de este equipo, para abrirla en "Este equipo" (null si no es una). */
+export function localTermDir(t: Tab): string | null {
+  if (t.kind !== 'terminal' || t.connId !== LOCAL) return null
+  return t.cwd ?? t.initialDir ?? ''
 }
 
 // ---------- Drag & drop desde el SO ----------

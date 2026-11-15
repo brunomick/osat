@@ -14,7 +14,9 @@
     isServerPinned,
     kindIcon,
     LOCAL,
+    localTermDir,
     openLocal,
+    openPinnedDir,
     openPorts,
     openTab,
     patchTab,
@@ -117,6 +119,7 @@ import { contextMenuAt, isMenuKey } from '../lib/treenav'
           ? [{ label: 'Snippets…', icon: 'file', hint: keys('Ctrl+Shift+S'), action: () => (activeTabId.set(t.id), snippetsRequest.set(t.id)) }]
           : []),
         ...(t.kind === 'terminal' ? [{ label: 'Broadcast…', icon: 'terminal', hint: keys('Ctrl+Shift+M'), action: () => broadcastDialogOpen.set(true) }] : []),
+        ...(localTermDir(t) !== null ? [{ label: tr('tabs.browseHere'), icon: 'folder', action: () => openPinnedDir(localTermDir(t) ?? '') }] : []),
         ...(t.kind === 'terminal' ? [{ label: tr('term.saveText'), icon: 'download', action: () => saveTextRequest.set(t.id) }] : []),
         ...(t.kind === 'rdp' || t.kind === 'vnc' || t.kind === 'local' || t.kind === 'site' || t.connId === LOCAL || isAppTab(t)
           ? []

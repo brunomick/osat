@@ -28,6 +28,7 @@
     browserSupported,
     exportGroup,
     closeTab,
+    localTermDir,
     patchTab,
     connections,
     defaultShell,
@@ -183,6 +184,7 @@
       y: e.clientY,
       items: [
         { label: tr('tabs.rename'), icon: 'edit', action: () => renameTerm(t, list) },
+        ...(localTermDir(t) !== null ? [{ label: tr('tabs.browseHere'), icon: 'folder', action: () => openPinnedDir(localTermDir(t) ?? '') }] : []),
         ...(t.label ? [{ label: tr('tabs.originalName'), icon: 'refresh', action: () => patchTab(t.id, { label: undefined }) }] : []),
         { separator: true, label: '' },
         { label: tr('common.close'), icon: 'x', action: () => closeTab(t.id) },

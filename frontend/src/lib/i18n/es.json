@@ -262,6 +262,7 @@
     "rename": "Renombrar",
     "renameTip": "Nombre (vacío para volver al original)",
     "originalName": "Volver al nombre original",
+    "browseHere": "Explorar esta carpeta",
     "openSftpHere": "Abrir SFTP en esta conexión",
     "openTerminalHere": "Abrir terminal en esta conexión",
     "portsHere": "Reenvío de puertos en esta conexión",

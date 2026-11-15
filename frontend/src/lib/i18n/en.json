@@ -262,6 +262,7 @@
     "rename": "Rename",
     "renameTip": "Name (empty to restore the original)",
     "originalName": "Restore the original name",
+    "browseHere": "Browse this folder",
     "openSftpHere": "Open SFTP on this connection",
     "openTerminalHere": "Open terminal on this connection",
     "portsHere": "Port forwarding on this connection",
