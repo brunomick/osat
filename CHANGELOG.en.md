@@ -4,6 +4,14 @@ The important changes in osat, in English. Versions before 0.4.0 are only in the
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.1.3-beta.1] - 2026-11-14
+
+Beta version: it brings changes that are still being tested.
+
+### Added
+
+- **Terminals can be renamed**, both the ones on this computer and the ones on a server, so you know what's in each one: double-click or press F2 on the tab, or right-click → Rename, on the tab or in the sidebar. The name shows on the tab and in the sidebar, and it's saved with workspaces. Leave it empty to get the original name back.
+
 ## [1.1.2] - 2026-11-13
 
 ### Fixed

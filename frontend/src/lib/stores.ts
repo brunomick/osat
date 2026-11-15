@@ -64,6 +64,8 @@ export interface Tab {
   kind: TabKind
   connId: string
   title: string
+  /** Para las terminales: nombre que le puso el usuario; si está, se muestra en lugar del título. */
+  label?: string
   color?: string
   /** Si se abrió desde otra pestaña, reutiliza su conexión SSH. */
   fromSession?: string

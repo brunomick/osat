@@ -18,6 +18,7 @@ export interface SavedTab {
   kind: TabKind
   connId: string
   title: string
+  label?: string
   color?: string
   shell?: string
   initialDir?: string
@@ -100,7 +101,7 @@ export function snapshot(tabs: Tab[], layout: LayoutNode): WorkspaceData {
       const ref = `t${saved.length + 1}`
       refOf.set(id, ref)
       const s: SavedTab = { ref, kind: t.kind, connId: t.connId, title: t.title }
-      for (const k of ['color', 'shell', 'initialDir', 'cwd', 'path', 'url'] as const) {
+      for (const k of ['label', 'color', 'shell', 'initialDir', 'cwd', 'path', 'url'] as const) {
         const v = t[k]
         if (v) s[k] = v
       }
@@ -129,7 +130,7 @@ function readTab(x: unknown): SavedTab | null {
   const { ref, kind, connId, title } = x
   if (typeof ref !== 'string' || !ref || !KINDS.includes(kind as TabKind) || typeof connId !== 'string' || typeof title !== 'string') return null
   const t: SavedTab = { ref, kind: kind as TabKind, connId, title: legacyTitle(kind as TabKind, title) }
-  for (const k of ['color', 'shell', 'initialDir', 'cwd', 'path', 'url'] as const) {
+  for (const k of ['label', 'color', 'shell', 'initialDir', 'cwd', 'path', 'url'] as const) {
     const v = str(x[k])
     if (v) t[k] = v
   }
@@ -196,6 +197,7 @@ export function restore(data: unknown, connections: Connection[]): Restored | nu
       kind: t.kind,
       connId: t.connId,
       title: t.title,
+      label: t.label,
       color: t.color,
       shell: t.shell,
       initialDir: startDir(t),

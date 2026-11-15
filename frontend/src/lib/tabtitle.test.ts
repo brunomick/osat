@@ -38,3 +38,10 @@ describe('isServerGone', () => {
     expect(isServerGone('OSAT:{"code":"CONFLICT","message":"se cortó la conexión"}')).toBe(false)
   })
 })
+
+describe('nombre propio de una terminal', () => {
+  it('tapa el título, y sin él se muestra el original', () => {
+    expect(tabTitle(tr, { kind: 'terminal', title: 'web', label: 'logs' })).toBe('logs')
+    expect(tabTitle(tr, { kind: 'terminal', title: 'web' })).toBe('web')
+  })
+})
