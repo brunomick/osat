@@ -46,6 +46,14 @@ func (hub *Hub) Add(owner string, h http.Handler, done func()) (*Site, error) {
 			http.Error(w, "host no permitido", http.StatusForbidden)
 			return
 		}
+		// Lo que sale de la propia página del sitio trae su mismo Origin (o ninguno, en un GET). Otro
+		// Origin es una página abierta en el navegador del sistema que probó este puerto: sin esto, el
+		// proxy lo cambia por el del destino y un WebSocket o un POST ajeno pasaría las defensas
+		// CSRF/CSWSH del servicio al que se llega.
+		if o := r.Header.Get("Origin"); o != "" && o != "http://"+host {
+			http.Error(w, "origen no permitido", http.StatusForbidden)
+			return
+		}
 		h.ServeHTTP(w, r)
 	})
 	s := &Site{ID: uuid.NewString(), URL: "http://" + host, owner: owner, srv: &http.Server{Handler: guarded}, done: done}

@@ -274,3 +274,35 @@ func TestTargetValid(t *testing.T) {
 		}
 	}
 }
+
+// Una página de otro origen (abierta en el navegador del sistema) no puede usar el puerto de un sitio.
+func TestSiteRejectsForeignOrigin(t *testing.T) {
+	var reached bool
+	hub := NewHub()
+	site, err := hub.Add("tab", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		reached = true
+		w.Write([]byte("ok"))
+	}), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer hub.CloseAll()
+
+	for origin, want := range map[string]int{
+		"":                      http.StatusOK,
+		site.URL:                http.StatusOK,
+		"https://atacante.test": http.StatusForbidden,
+		"http://127.0.0.1:1":    http.StatusForbidden,
+		"null":                  http.StatusForbidden,
+	} {
+		reached = false
+		resp, _ := fetch(t, site.URL+"/", func(r *http.Request) {
+			if origin != "" {
+				r.Header.Set("Origin", origin)
+			}
+		})
+		if resp.StatusCode != want || (want == http.StatusForbidden && reached) {
+			t.Errorf("Origin %q: %d (llegó al sitio: %v); quería %d", origin, resp.StatusCode, reached, want)
+		}
+	}
+}
