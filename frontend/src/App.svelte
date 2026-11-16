@@ -287,7 +287,7 @@
   }
   // La notificación de Android que mantiene vivas las sesiones mientras haya alguna abierta.
   $: openSessions = $tabs.filter((t) => !isAppTab(t)).length
-  $: if (android) (window as any).OsatAndroid?.sessions?.(openSessions)
+  $: if (android) (window as any).osatNative?.sessions?.(openSessions)
 
   // Atrás de Android (MainActivity.kt): si hay un diálogo, menú u hoja abierta la cierra (como Esc, que
   // llega a donde está el foco); si no, de una pestaña a Sesiones (o a Inicio si es de osat) y de ahí

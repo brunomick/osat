@@ -23,6 +23,7 @@ import android.webkit.WebViewClient
 import android.widget.FrameLayout
 import java.io.File
 import java.security.KeyStore
+import java.security.MessageDigest
 import java.security.SecureRandom
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
@@ -39,6 +40,11 @@ class MainActivity : Activity() {
     private var backend: Process? = null
     private var pickId = 0L
     private var askedNotifications = false
+
+    // Clave del puente nativo: solo la conoce la página de osat (main_android.go la escribe en su
+    // index.html). addJavascriptInterface mete OsatAndroid en todos los frames, también en el iframe
+    // del navegador integrado, que muestra páginas de los servidores: sin la clave no le sirve.
+    private val bridgeKey = randomBase64(32)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -75,6 +81,7 @@ class MainActivity : Activity() {
             put("SHELL", "/system/bin/sh")
             put("TZ", java.util.TimeZone.getDefault().id) // sin esto Go queda en UTC
             put("OSAT_TOKEN", token)
+            put("OSAT_BRIDGE_KEY", bridgeKey)
             put("OSAT_SECRET_KEY", secretKey())
             put("OSAT_DOWNLOADS", (getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) ?: filesDir).path)
         }
@@ -183,20 +190,27 @@ class MainActivity : Activity() {
     private fun randomBase64(n: Int): String =
         Base64.encodeToString(ByteArray(n).also { SecureRandom().nextBytes(it) }, Base64.NO_WRAP)
 
+    // Cada método recibe primero la clave del puente (bridgeKey): sin ella no hace nada.
     inner class Bridge {
+        private fun ok(key: String?): Boolean =
+            key != null && MessageDigest.isEqual(key.toByteArray(), bridgeKey.toByteArray())
+
         @JavascriptInterface
-        fun clipboardGet(): String {
+        fun clipboardGet(key: String?): String {
+            if (!ok(key)) return ""
             val cm = getSystemService(ClipboardManager::class.java)
             return cm.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(this@MainActivity)?.toString() ?: ""
         }
 
         @JavascriptInterface
-        fun clipboardSet(text: String) {
+        fun clipboardSet(key: String?, text: String) {
+            if (!ok(key)) return
             getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText("osat", text))
         }
 
         @JavascriptInterface
-        fun openUrl(url: String) {
+        fun openUrl(key: String?, url: String) {
+            if (!ok(key)) return
             val uri = Uri.parse(url)
             if (uri.scheme != "http" && uri.scheme != "https") return
             runOnUiThread { runCatching { startActivity(Intent(Intent.ACTION_VIEW, uri)) } }
@@ -205,7 +219,8 @@ class MainActivity : Activity() {
         // Cuántas sesiones hay abiertas: mientras haya alguna, el servicio en primer plano las mantiene
         // vivas. La primera vez se pide permiso para mostrar su notificación (Android 13+).
         @JavascriptInterface
-        fun sessions(count: Int) {
+        fun sessions(key: String?, count: Int) {
+            if (!ok(key)) return
             runOnUiThread {
                 if (count > 0 && Build.VERSION.SDK_INT >= 33 && !askedNotifications &&
                     checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
@@ -218,7 +233,8 @@ class MainActivity : Activity() {
         }
 
         @JavascriptInterface
-        fun pickFiles(id: Long, multiple: Boolean) {
+        fun pickFiles(key: String?, id: Long, multiple: Boolean) {
+            if (!ok(key)) return
             runOnUiThread {
                 pickId = id
                 val i = Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*")

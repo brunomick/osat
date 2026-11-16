@@ -24,6 +24,7 @@ import (
 	"os"
 	"reflect"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -71,6 +72,11 @@ func main() {
 		fmt.Fprintln(os.Stderr, "osat: falta OSAT_TOKEN")
 		os.Exit(2)
 	}
+	bridgeKey := os.Getenv("OSAT_BRIDGE_KEY")
+	if bridgeKey == "" {
+		fmt.Fprintln(os.Stderr, "osat: falta OSAT_BRIDGE_KEY")
+		os.Exit(2)
+	}
 	app, err := NewApp(cfg)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "osat:", err)
@@ -94,7 +100,7 @@ func main() {
 	}()
 
 	slog.Info("servidor de Android", "addr", ln.Addr().String())
-	if err := http.Serve(ln, newMux(app, token)); err != nil {
+	if err := http.Serve(ln, newMux(app, token, bridgeKey)); err != nil {
 		slog.Error("servidor de Android", "err", err)
 	}
 }
@@ -116,7 +122,9 @@ func listen() (net.Listener, error) {
 	return net.Listen("tcp", "127.0.0.1:0")
 }
 
-func newMux(app *App, token string) http.Handler {
+func newMux(app *App, token, bridgeKey string) http.Handler {
+	keyJS, _ := json.Marshal(bridgeKey)
+	head := []byte(`<head><script>window.__osatBridgeKey=` + string(keyJS) + `</script><script src="/osat-android.js"></script>`)
 	dist, _ := fs.Sub(assets, "frontend/dist")
 	files := http.FileServer(http.FS(dist))
 	upgrader := websocket.Upgrader{CheckOrigin: sameOrigin}
@@ -186,7 +194,8 @@ func newMux(app *App, token string) http.Handler {
 			return
 		}
 		// El puente va antes que el frontend, que busca window.go al arrancar.
-		page = bytes.Replace(page, []byte("<head>"), []byte(`<head><script src="/osat-android.js"></script>`), 1)
+		// La clave del puente nativo va solo en esta página (ver MainActivity.kt).
+		page = bytes.Replace(page, []byte("<head>"), head, 1)
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.Header().Set("Cache-Control", "no-store")
 		w.Write(page)
@@ -206,6 +215,16 @@ func newMux(app *App, token string) http.Handler {
 		if err != nil || subtle.ConstantTimeCompare([]byte(c.Value), []byte(token)) != 1 {
 			http.Error(w, "forbidden", http.StatusForbidden)
 			return
+		}
+		// La cookie no alcanza: es la misma para todos los puertos de 127.0.0.1, así que también la
+		// manda una página del navegador integrado (otro puerto). Lo que cambia algo tiene que venir
+		// de esta misma página (Origin) y como JSON (desde otro origen, eso exige un preflight que
+		// acá no se contesta).
+		if r.Method != http.MethodGet && r.Method != http.MethodHead {
+			if !sameOrigin(r) || !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
+				http.Error(w, "forbidden", http.StatusForbidden)
+				return
+			}
 		}
 		mux.ServeHTTP(w, r)
 	})

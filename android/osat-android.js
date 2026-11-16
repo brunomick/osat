@@ -2,7 +2,29 @@
 // Wails) sobre el servidor local de main_android.go. Lo nativo de Android (portapapeles, enlaces,
 // elegir archivos) va por window.OsatAndroid, que agrega la app en MainActivity.kt.
 ;(function () {
-  var native = window.OsatAndroid
+  // OsatAndroid está en todos los frames (también en el iframe del navegador integrado): cada
+  // método pide la clave que main_android.go escribió solo en esta página.
+  var key = window.__osatBridgeKey
+  delete window.__osatBridgeKey
+  var raw = window.OsatAndroid
+  var native = raw && {
+    clipboardGet: function () {
+      return raw.clipboardGet(key)
+    },
+    clipboardSet: function (text) {
+      raw.clipboardSet(key, text)
+    },
+    openUrl: function (url) {
+      raw.openUrl(key, url)
+    },
+    sessions: function (count) {
+      raw.sessions(key, count)
+    },
+    pickFiles: function (id, multiple) {
+      raw.pickFiles(key, id, multiple)
+    },
+  }
+  window.osatNative = native
 
   function call(method, args) {
     return fetch('/call', {
