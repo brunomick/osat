@@ -9,7 +9,8 @@ func init() {
 		"update.incomplete":     {es: "descarga incompleta (%d de %d bytes)", en: "incomplete download (%d of %d bytes)"},
 		"update.noAsset":        {es: "la versión %s no trae el archivo para este sistema", en: "version %s has no file for this system"},
 		"update.missingInFile":  {es: "el archivo descargado no trae %s", en: "the downloaded file doesn't contain %s"},
-		"update.badPath":        {es: "ruta inválida en el archivo descargado: %s", en: "invalid path in the downloaded file: %s"},
+		"update.insecureURL":    {es: "la actualización pide una dirección que no es https: %s", en: "the update asks for an address that is not https: %s"},
+		"update.badPath":        {es:  "ruta inválida en el archivo descargado: %s", en: "invalid path in the downloaded file: %s"},
 		"update.notWritable": {
 			es: "osat no puede reemplazarse a sí mismo en la carpeta donde está instalado: bajá la versión nueva de la página de descargas.",
 			en: "osat can't replace itself in the folder where it's installed: download the new version from the downloads page.",

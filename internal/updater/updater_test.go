@@ -285,3 +285,53 @@ func TestWritableDir(t *testing.T) {
 		t.Error("una carpeta que no existe no se puede escribir")
 	}
 }
+
+func TestSecureURL(t *testing.T) {
+	for u, want := range map[string]bool{
+		"https://github.com/brunomick/osat/releases/download/v1/osat.zip": true,
+		"http://127.0.0.1:8080/x":                                         true,
+		"http://localhost/x":                                              true,
+		"http://[::1]:9/x":                                                true,
+		"http://github.com/x":                                             false,
+		"http://127.0.0.1.evil.test/x":                                    false,
+		"ftp://github.com/x":                                              false,
+		"file:///etc/passwd":                                              false,
+		"":                                                                false,
+	} {
+		if got := secureURL(u); got != want {
+			t.Errorf("secureURL(%q) = %v; quería %v", u, got, want)
+		}
+	}
+}
+
+// Una redirección de https a http (por ejemplo, de un servidor que cambió de mano) no se sigue.
+func TestDownloadRefusesRedirectToPlainHTTP(t *testing.T) {
+	plain := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("x")) }))
+	defer plain.Close()
+	// El destino es loopback (permitido), así que la redirección a otro host http sí se corta:
+	redir := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "http://example.invalid/osat.exe", http.StatusFound)
+	}))
+	defer redir.Close()
+	dest := filepath.Join(t.TempDir(), "f")
+	if err := Download(context.Background(), redir.URL, dest, "osat", nil); err == nil {
+		t.Fatal("se siguió una redirección a http")
+	}
+	if _, err := os.Stat(dest); err == nil {
+		t.Fatal("no debería haberse creado el archivo")
+	}
+	if err := Download(context.Background(), "http://example.invalid/x", dest, "osat", nil); err == nil {
+		t.Fatal("se aceptó una dirección http")
+	}
+}
+
+func TestUpdateURLOverrideNeedsHTTPS(t *testing.T) {
+	t.Setenv("OSAT_UPDATE_URL", "http://evil.test/latest")
+	if got := LatestURL(); strings.Contains(got, "evil.test") {
+		t.Fatalf("se respetó una dirección http: %s", got)
+	}
+	t.Setenv("OSAT_UPDATE_URL", "http://127.0.0.1:1234/latest")
+	if got := LatestURL(); got != "http://127.0.0.1:1234/latest" {
+		t.Fatalf("no se respetó la dirección local: %s", got)
+	}
+}

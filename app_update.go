@@ -81,7 +81,9 @@ func (a *App) UpdateCheck(lang string, beta bool) (UpdateInfo, error) {
 func (a *App) UpdateApply() error {
 	upd.mu.Lock()
 	rel := upd.rel
-	if rel == nil || upd.applying {
+	// Solo una versión más nueva que la que corre: así una Release vieja marcada como "latest" no
+	// sirve para volver a una versión con fallas ya corregidas.
+	if rel == nil || upd.applying || !updater.Newer(rel.Version, appVersion()) {
 		upd.mu.Unlock()
 		return i18n.Err("update.nothingToDo")
 	}

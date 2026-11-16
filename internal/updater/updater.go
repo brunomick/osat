@@ -6,8 +6,10 @@ package updater
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -16,9 +18,39 @@ import (
 	"osat/internal/i18n"
 )
 
-// LatestURL es la Release más nueva publicada. OSAT_UPDATE_URL la reemplaza (para probar contra un servidor local).
+// secureURL dice si raw es una dirección de la que se puede bajar algo: https, o http solo hacia esta
+// misma PC (para probar contra un servidor local). Evita que una redirección o una variable de entorno
+// lleven la descarga a un http cualquiera, donde se podría cambiar el instalador.
+func secureURL(raw string) bool {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return false
+	}
+	switch u.Scheme {
+	case "https":
+		return true
+	case "http":
+		h := u.Hostname()
+		return h == "127.0.0.1" || h == "localhost" || h == "::1"
+	}
+	return false
+}
+
+// httpsOnly es el CheckRedirect de los clientes: cada salto tiene que pasar secureURL.
+func httpsOnly(req *http.Request, via []*http.Request) error {
+	if len(via) >= 10 {
+		return errors.New("stopped after 10 redirects")
+	}
+	if !secureURL(req.URL.String()) {
+		return i18n.Err("update.insecureURL", req.URL.Redacted())
+	}
+	return nil
+}
+
+// LatestURL es la Release más nueva publicada. OSAT_UPDATE_URL la reemplaza (para probar contra un
+// servidor local); solo se respeta si es https o de esta PC (ver secureURL).
 func LatestURL() string {
-	if u := os.Getenv("OSAT_UPDATE_URL"); u != "" {
+	if u := os.Getenv("OSAT_UPDATE_URL"); u != "" && secureURL(u) {
 		return u
 	}
 	return "https://api.github.com/repos/brunomick/osat/releases/latest"
@@ -27,7 +59,7 @@ func LatestURL() string {
 // ListURL son las Releases más recientes, betas incluidas (para quien acepta betas).
 // OSAT_UPDATE_LIST_URL la reemplaza (para probar contra un servidor local).
 func ListURL() string {
-	if u := os.Getenv("OSAT_UPDATE_LIST_URL"); u != "" {
+	if u := os.Getenv("OSAT_UPDATE_LIST_URL"); u != "" && secureURL(u) {
 		return u
 	}
 	return "https://api.github.com/repos/brunomick/osat/releases?per_page=20"
@@ -49,7 +81,7 @@ type Asset struct {
 	Size int64
 }
 
-var client = &http.Client{Timeout: 30 * time.Second}
+var client = &http.Client{Timeout: 30 * time.Second, CheckRedirect: httpsOnly}
 
 // ghRelease es una Release como la devuelve la API de GitHub.
 type ghRelease struct {
@@ -231,12 +263,15 @@ func PickAsset(rel Release, k Kind) (Asset, bool) {
 
 // Download baja url a dest y avisa el avance (total puede ser 0 si el servidor no lo dice).
 func Download(ctx context.Context, url, dest, userAgent string, progress func(done, total int64)) error {
+	if !secureURL(url) {
+		return i18n.Err("update.insecureURL", url)
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return err
 	}
 	req.Header.Set("User-Agent", userAgent)
-	resp, err := (&http.Client{}).Do(req) // sin el Timeout corto: el archivo puede tardar
+	resp, err := (&http.Client{CheckRedirect: httpsOnly}).Do(req) // sin el Timeout corto: el archivo puede tardar
 	if err != nil {
 		return err
 	}
