@@ -10,7 +10,7 @@ import (
 const redacted = "[oculto]"
 
 // sensitiveKeys son los fragmentos que vuelven sensible a una clave (sin distinguir mayúsculas).
-var sensitiveKeys = []string{"secret", "password", "pass", "passphrase", "token"}
+var sensitiveKeys = []string{"secret", "password", "pass", "passphrase", "token", "otp", "answer", "credential", "cookie", "apikey", "api_key"}
 
 func sensitive(key string) bool {
 	k := strings.ToLower(key)
