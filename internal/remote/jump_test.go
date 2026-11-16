@@ -114,7 +114,7 @@ func dialTrusting(m *Manager, req ConnectRequest) (*ssh.Client, error) {
 		client, _, err := m.dial(req)
 		var ke *Error
 		if errors.As(err, &ke) && ke.Code == CodeHostKeyUnknown {
-			if err := m.hostKeys.Trust(ke.Data["host"]); err != nil {
+			if err := m.hostKeys.Trust(ke.Data["host"], ke.Data["fingerprint"]); err != nil {
 				return nil, err
 			}
 			continue
@@ -236,7 +236,7 @@ func TestDialJumpForRDP(t *testing.T) {
 			client, err := m.DialJump(rdp, map[string]JumpSecret{bastion.ID: {Secret: "pw-bastion"}})
 			var ke *Error
 			if errors.As(err, &ke) && ke.Code == CodeHostKeyUnknown && ke.Data["connId"] == bastion.ID {
-				m.hostKeys.Trust(ke.Data["host"])
+				m.hostKeys.Trust(ke.Data["host"], ke.Data["fingerprint"])
 				continue
 			}
 			return client, err

@@ -120,13 +120,18 @@ func (h *HostKeys) Algorithms(hostport string) []string {
 	return out // vacío (tipo poco común, p. ej. certificados) = nil = defaults
 }
 
-// Trust agrega a known_hosts la clave pendiente para host (formato host:port).
-func (h *HostKeys) Trust(host string) error {
+// Trust agrega a known_hosts la clave pendiente para host (formato host:port). fingerprint es la
+// que se le mostró al usuario: tiene que ser la de la clave pendiente. Si otra conexión al mismo
+// host vio una clave distinta mientras el diálogo estaba abierto, no se acepta ninguna.
+func (h *HostKeys) Trust(host, fingerprint string) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	key, ok := h.pending[host]
 	if !ok {
 		return i18n.Err("remote.thereIsNoPendingKey", host)
+	}
+	if fingerprint == "" || ssh.FingerprintSHA256(key) != fingerprint {
+		return i18n.Err("remote.hostKeyChangedWhileAsking", host)
 	}
 	f, err := os.OpenFile(h.path, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0o600)
 	if err != nil {

@@ -108,11 +108,11 @@ export async function connectTab(tab: Tab, cols = 120, rows = 32, opts: ConnectO
 
         case 'HOSTKEY_UNKNOWN': {
           if (acceptAfterForget && acceptAfterForget === d.fingerprint) {
-            await api.trustHostKey(d.host)
+            await api.trustHostKey(d.host, d.fingerprint)
             break
           }
           if (!(await confirmHostKey(ke))) throw new CancelledError()
-          await api.trustHostKey(d.host)
+          await api.trustHostKey(d.host, d.fingerprint)
           break
         }
 
@@ -189,7 +189,7 @@ export async function resolveJumpError(e: unknown, jumpSecrets: JumpSecrets): Pr
       if (!(await confirmHostKey(ke))) return 'cancel'
       // Tras un cambio, la clave nueva quedó pendiente en el backend: se borra la vieja y se confía en esa.
       if (ke.code === 'HOSTKEY_MISMATCH') await api.forgetHostKey(d.host)
-      await api.trustHostKey(d.host)
+      await api.trustHostKey(d.host, d.fingerprint)
       return 'retry'
   }
   return null

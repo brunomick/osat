@@ -73,3 +73,36 @@ func TestLsMode(t *testing.T) {
 		}
 	}
 }
+
+// Trust solo acepta la clave cuya huella vio el usuario: si otra conexión pisó la pendiente
+// mientras el diálogo estaba abierto, no se guarda ninguna.
+func TestTrustRequiresShownFingerprint(t *testing.T) {
+	seen, _, _ := ed25519.GenerateKey(rand.Reader)
+	other, _, _ := ed25519.GenerateKey(rand.Reader)
+	path := filepath.Join(t.TempDir(), "known_hosts")
+	hk, err := NewHostKeys(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const host = "srv.test:22"
+	shown := ssh.FingerprintSHA256(pubKey(t, seen))
+
+	hk.pending[host] = pubKey(t, other) // la clave que llegó después, de otro intento
+	if err := hk.Trust(host, shown); err == nil {
+		t.Fatal("se aceptó una clave distinta de la que se mostró")
+	}
+	if err := hk.Trust(host, ""); err == nil {
+		t.Fatal("se aceptó sin huella")
+	}
+	if b, _ := os.ReadFile(path); len(b) != 0 {
+		t.Fatalf("known_hosts no debería haber cambiado: %q", b)
+	}
+
+	hk.pending[host] = pubKey(t, seen)
+	if err := hk.Trust(host, shown); err != nil {
+		t.Fatal(err)
+	}
+	if b, _ := os.ReadFile(path); !strings.Contains(string(b), "ssh-ed25519") {
+		t.Fatalf("falta la clave en known_hosts: %q", b)
+	}
+}

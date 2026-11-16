@@ -648,7 +648,7 @@ export const api = {
   lockWindowReady: (): Promise<boolean> => app().LockWindowReady(),
   lockNow: (): Promise<void> => app().LockNow(),
 
-  trustHostKey: (host: string): Promise<void> => app().TrustHostKey(host),
+  trustHostKey: (host: string, fingerprint: string): Promise<void> => app().TrustHostKey(host, fingerprint),
   forgetHostKey: (host: string): Promise<void> => app().ForgetHostKey(host),
 
   openTerminal: (r: ConnectRequest): Promise<SessionInfo> => app().OpenTerminal(r),

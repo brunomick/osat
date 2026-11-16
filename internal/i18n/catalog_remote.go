@@ -44,6 +44,7 @@ func init() {
 		"remote.couldnTOpenSV":                   {es: "no se pudo abrir %s: %v", en: "couldn't open %s: %v"},
 		"remote.itWasStoppedWhileStarting":       {es: "se detuvo mientras arrancaba", en: "it was stopped while starting"},
 		"remote.thereIsNoPendingKey":             {es: "no hay una clave pendiente para %s", en: "there is no pending key for %s"},
+		"remote.hostKeyChangedWhileAsking":       {es: "la clave de %s cambió mientras se preguntaba: volvé a conectar y verificá la huella", en: "the key of %s changed while asking: connect again and check the fingerprint"},
 		"remote.kubectlIsNotInstalledOn":         {es: "kubectl no está instalado en el servidor (o no está en el PATH de sus comandos): probá \"kubectl version\" en una terminal de ese servidor", en: "kubectl is not installed on the server (or it is not in the PATH of its commands): try \"kubectl version\" in a terminal on that server"},
 		"remote.kubectlTookTooLongTo":            {es: "kubectl tardó demasiado en contestar", en: "kubectl took too long to answer"},
 		"remote.invalidNamespaceQ":               {es: "namespace inválido: %q", en: "invalid namespace: %q"},

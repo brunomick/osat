@@ -73,7 +73,7 @@ func TestE2E(t *testing.T) {
 		t.Fatalf("esperaba HOSTKEY_UNKNOWN, obtuve %v", err)
 	}
 	t.Logf("huella: %s", ke.Data["fingerprint"])
-	if err := hk.Trust(ke.Data["host"]); err != nil {
+	if err := hk.Trust(ke.Data["host"], ke.Data["fingerprint"]); err != nil {
 		t.Fatal(err)
 	}
 	// 3) contraseña incorrecta -> AUTH_FAILED

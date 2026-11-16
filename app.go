@@ -384,7 +384,8 @@ func (a *App) PickImportFile(source string) (string, error) {
 
 // ---------- Host keys ----------
 
-func (a *App) TrustHostKey(host string) error  { return a.hk.Trust(host) }
+// TrustHostKey acepta para host la clave con la huella que se le mostró al usuario.
+func (a *App) TrustHostKey(host, fingerprint string) error { return a.hk.Trust(host, fingerprint) }
 func (a *App) ForgetHostKey(host string) error { return a.hk.Forget(host) }
 
 // AnswerAuthPrompt responde una pregunta keyboard-interactive (nil = cancelar).

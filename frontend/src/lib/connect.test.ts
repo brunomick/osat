@@ -212,7 +212,7 @@ describe('connectTab', () => {
           details: expect.arrayContaining([['Huella', 'SHA256:aaa']]),
         }),
       )
-      expect(m.trustHostKey).toHaveBeenCalledWith('srv.example.com:22')
+      expect(m.trustHostKey).toHaveBeenCalledWith('srv.example.com:22', 'SHA256:aaa')
       expect(m.openTerminal).toHaveBeenCalledTimes(2)
     })
 
@@ -236,7 +236,7 @@ describe('connectTab', () => {
         expect.objectContaining({ title: '⚠ La clave del servidor cambió', danger: true }),
       )
       expect(m.forgetHostKey).toHaveBeenCalledWith('srv.example.com:22')
-      expect(m.trustHostKey).toHaveBeenCalledWith('srv.example.com:22')
+      expect(m.trustHostKey).toHaveBeenCalledWith('srv.example.com:22', 'SHA256:bbb')
       expect(m.forgetHostKey.mock.invocationCallOrder[0]).toBeLessThan(m.trustHostKey.mock.invocationCallOrder[0])
       expect(m.openTerminal).toHaveBeenCalledTimes(3)
     })
@@ -438,7 +438,7 @@ describe('resolveJumpError', () => {
     m.confirmDialog.mockResolvedValue(true)
     const e = osatError('HOSTKEY_UNKNOWN', 'Servidor desconocido.', { connId: 'jump', host: 'bastion.example.com:2222', fingerprint: 'SHA256:j' })
     expect(await resolveJumpError(e, {})).toBe('retry')
-    expect(m.trustHostKey).toHaveBeenCalledWith('bastion.example.com:2222')
+    expect(m.trustHostKey).toHaveBeenCalledWith('bastion.example.com:2222', 'SHA256:j')
     expect(m.forgetHostKey).not.toHaveBeenCalled()
   })
 
@@ -451,10 +451,10 @@ describe('resolveJumpError', () => {
 
   it('huella cambiada del salto aceptada: olvida la vieja, confía en la nueva y pide reintentar', async () => {
     m.confirmDialog.mockResolvedValue(true)
-    const e = osatError('HOSTKEY_MISMATCH', 'Cambió.', { connId: 'jump', host: 'bastion.example.com:2222' })
+    const e = osatError('HOSTKEY_MISMATCH', 'Cambió.', { connId: 'jump', host: 'bastion.example.com:2222', fingerprint: 'SHA256:k' })
     expect(await resolveJumpError(e, {})).toBe('retry')
     expect(m.forgetHostKey).toHaveBeenCalledWith('bastion.example.com:2222')
-    expect(m.trustHostKey).toHaveBeenCalledWith('bastion.example.com:2222')
+    expect(m.trustHostKey).toHaveBeenCalledWith('bastion.example.com:2222', 'SHA256:k')
     expect(m.forgetHostKey.mock.invocationCallOrder[0]).toBeLessThan(m.trustHostKey.mock.invocationCallOrder[0])
   })
 
