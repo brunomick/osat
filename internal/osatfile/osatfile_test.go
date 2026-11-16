@@ -2,6 +2,7 @@ package osatfile
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -153,5 +154,24 @@ func TestDefaultsRoundTrip(t *testing.T) {
 	data, _ = Seal([]Entry{{Name: "x", Host: "h"}}, nil, nil, nil, "pw")
 	if _, _, _, out, _ := Open(data, "pw"); out != nil {
 		t.Fatalf("sin credenciales por defecto, Open = %+v", out)
+	}
+}
+
+// Un archivo armado a mano con time o threads en 0 no puede hacer caer a osat (argon2 hace panic).
+func TestOpenRejectsZeroCost(t *testing.T) {
+	data, err := Seal([]Entry{{Name: "x", Host: "h", User: "u"}}, nil, nil, nil, "clave larga")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, field := range []string{"time", "threads"} {
+		var m map[string]any
+		if err := json.Unmarshal(data, &m); err != nil {
+			t.Fatal(err)
+		}
+		m[field] = 0
+		bad, _ := json.Marshal(m)
+		if _, _, _, _, err := Open(bad, "clave larga"); err == nil {
+			t.Errorf("%s=0: se abrió un archivo inválido", field)
+		}
 	}
 }

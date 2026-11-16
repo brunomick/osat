@@ -152,7 +152,8 @@ func Open(data []byte, password string) ([]Entry, []SnippetEntry, []SiteEntry, *
 		return nil, nil, nil, nil, i18n.Err("data.theFileIsFromA", env.Version)
 	}
 	// Un archivo armado a mano no puede pedir gigas de memoria ni minutos de CPU.
-	if env.Memory > 1024*1024 || env.Time > 16 || env.Threads == 0 || len(env.Nonce) != 12 {
+	// (argon2.IDKey hace panic con time o threads en 0.)
+	if env.Memory > 1024*1024 || env.Time == 0 || env.Time > 16 || env.Threads == 0 || len(env.Nonce) != 12 {
 		return nil, nil, nil, nil, i18n.Err("data.invalidConnectionsFile")
 	}
 	aead, err := gcm(deriveKey(password, env.Salt, env.Time, env.Memory, env.Threads))

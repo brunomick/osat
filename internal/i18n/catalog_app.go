@@ -10,6 +10,7 @@ func init() {
 		"app.sJumpHostConnectionS":             {es: "%s: no se encontró la conexión de salto «%s», se importó sin salto", en: "%s: jump host connection «%s» not found, imported without a jump host"},
 		"app.sCouldnTLinkThe":                  {es: "%s: no se pudo enlazar el salto «%s»: %v", en: "%s: couldn't link the jump host «%s»: %v"},
 		"app.thePasswordIsRequired":            {es: "la contraseña es obligatoria", en: "the password is required"},
+		"app.exportPasswordTooShort":           {es: "la contraseña del archivo tiene que tener al menos %d caracteres", en: "the file password must be at least %d characters long"},
 		"app.thereIsNothingToExport":           {es: "no hay nada para exportar", en: "there is nothing to export"},
 		"app.sCouldnTReadThe":                  {es: "%s: no se pudo leer la clave privada: %v", en: "%s: couldn't read the private key: %v"},
 		"app.sItIsNotIn":                       {es: "%s: no está en el archivo abierto", en: "%s: it is not in the opened file"},

@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"unicode/utf8"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
@@ -19,6 +20,9 @@ import (
 // ---------- Exportar / importar archivos .osat ----------
 // Para pasarle las conexiones a otro osat: un archivo cifrado con contraseña
 // que puede llevar también las contraseñas y las claves privadas completas.
+
+// minExportPassword es el largo mínimo (en caracteres) de la contraseña de un .osat.
+const minExportPassword = 8
 
 // osatPending: lo descifrado del último .osat abierto, hasta que se importa.
 type osatPending struct {
@@ -36,6 +40,11 @@ type osatPending struct {
 func (a *App) ExportConnections(ids []string, password string, withSecrets, withSnippets, withSites, withDefaults bool) (string, error) {
 	if password == "" {
 		return "", i18n.Err("app.thePasswordIsRequired")
+	}
+	// El diálogo ya pide 8; acá se exige también, porque el archivo puede llevar contraseñas y claves
+	// y se ataca sin conexión.
+	if utf8.RuneCountInString(password) < minExportPassword {
+		return "", i18n.Err("app.exportPasswordTooShort", minExportPassword)
 	}
 	entries, err := a.exportEntries(ids, withSecrets)
 	if err != nil {
