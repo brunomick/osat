@@ -109,6 +109,10 @@ func split(cmd string) ([][]string, error) {
 			segs, words = append(segs, words), nil
 		case ';', '&', '>', '<', '(', ')', '{', '}', '\\', '!', '`', '$':
 			return nil, bad(fmt.Sprintf("%q", c))
+		case '*', '?', '[':
+			// El shell los expande antes de correr el comando: `cat ~/.s?h/id_e*` lee una clave sin
+			// nombrarla. Entre comillas no se expanden (find -name '*.log' sigue andando).
+			return nil, bad(fmt.Sprintf("the wildcard %q outside quotes", c))
 		default:
 			cur.WriteByte(c)
 			inWord = true
@@ -159,12 +163,25 @@ func flagArg(a string) bool {
 	return len(a) > 1 && a[0] == '-' && !(a[1] >= '0' && a[1] <= '9')
 }
 
-// deny veda opciones largas (también con =valor) y cortas sueltas.
+// isFlag dice si a es la opción f: igual, con =valor o, en las opciones largas, una abreviatura
+// (GNU getopt y git aceptan `--outp` por `--output`, `--vacuum-t` por `--vacuum-time`).
+func isFlag(a, f string) bool {
+	if a == f || strings.HasPrefix(a, f+"=") {
+		return true
+	}
+	if strings.HasPrefix(a, "--") && strings.HasPrefix(f, "--") {
+		name, _, _ := strings.Cut(a, "=")
+		return len(name) > 2 && strings.HasPrefix(f, name)
+	}
+	return false
+}
+
+// deny veda opciones largas (también con =valor o abreviadas) y cortas sueltas.
 func deny(flags ...string) rule {
 	return func(args []string) error {
 		for _, a := range args {
 			for _, f := range flags {
-				if a == f || strings.HasPrefix(a, f+"=") {
+				if isFlag(a, f) {
 					return fmt.Errorf("the option %s is not allowed", f)
 				}
 			}
@@ -287,7 +304,8 @@ var rules = map[string]rule{
 
 	// Quién y qué máquina
 	"whoami": nil, "id": nil, "groups": nil, "who": nil, "w": nil, "users": nil, "last": nil,
-	"uname": nil, "uptime": nil, "nproc": nil, "arch": nil, "lsb_release": nil, "getent": nil,
+	"uname": nil, "uptime": nil, "nproc": nil, "arch": nil, "lsb_release": nil,
+	"getent": firstOneOf("passwd", "group", "services", "protocols"), // hosts/ahosts consultan al DNS
 	"hostname": only("-f", "-i", "-I", "-s", "-d", "-A", "-a", "-y", "--fqdn", "--ip-address", "--all-ip-addresses",
 		"--short", "--domain", "--all-fqdns", "--alias", "--yp", "--nis"),
 	"date": all(deny("-s", "--set"), denyShort("s")),
@@ -295,7 +313,7 @@ var rules = map[string]rule{
 	// Recursos
 	"df": nil, "du": nil, "free": nil, "lsblk": nil, "lscpu": nil, "lspci": nil, "lsusb": nil, "lsmod": nil,
 	"lsof": nil, "lsns": nil, "findmnt": nil, "pgrep": nil, "pidof": nil, "mount": only(),
-	"ps":      nil,
+	"ps":      psRule,
 	"dmesg":   all(deny("-c", "-C", "--clear", "--read-clear", "-w", "--follow", "--follow-new"), denyShort("cCw")),
 	"sysctl":  all(deny("-w", "--write", "-p", "--load", "--system"), denyShort("wp"), noAssign),
 	"crontab": only("-l"),
@@ -314,7 +332,8 @@ var rules = map[string]rule{
 
 	// Red
 	"ss":      all(deny("-K", "--kill"), denyShort("K")),
-	"netstat": nil, "dig": nil, "nslookup": nil, "host": nil,
+	// Sin dig, host ni nslookup: una consulta DNS saca datos por el nombre (<datos>.atacante.com).
+	"netstat": nil,
 	"ip": all(firstOneOf("a", "addr", "address", "l", "link", "r", "route", "n", "neigh", "neighbor", "neighbour", "rule", "maddr"),
 		denyVerbs("add", "del", "delete", "set", "change", "replace", "flush", "append", "up", "down", "save", "restore", "exec", "netns")),
 
@@ -325,11 +344,20 @@ var rules = map[string]rule{
 	"journalctl": all(needFlag("--no-pager"), deny("--vacuum-size", "--vacuum-time", "--vacuum-files", "--rotate",
 		"--flush", "--sync", "--setup-keys", "--cursor-file", "--follow", "--relinquish-var", "--smart-relinquish-var",
 		"--update-catalog"), denyShort("f")),
-	"docker": withSub([]string{"ps", "images", "inspect", "logs", "version", "info", "stats", "top", "port", "diff", "history"},
+	"docker": withSub([]string{"ps", "images", "logs", "version", "info", "stats", "top", "port", "diff", "history"},
 		map[string]rule{"logs": noFollow, "stats": needFlag("--no-stream")}),
 	"kubectl": withSub([]string{"get", "describe", "logs", "top", "version", "api-resources", "cluster-info", "explain"},
 		map[string]rule{"logs": noFollow}, "--raw"),
 	"git": gitRule,
+}
+
+// psRule veda el modificador "e" de la sintaxis BSD (`ps auxeww`), que agrega el entorno de cada
+// proceso (tokens, contraseñas) a la salida. `ps -e` y `ps -ef` no lo hacen y siguen valiendo.
+func psRule(args []string) error {
+	if len(args) > 0 && !strings.HasPrefix(args[0], "-") && strings.Contains(args[0], "e") {
+		return fmt.Errorf("the modifier e in %q prints the environment of each process", args[0])
+	}
+	return nil
 }
 
 // noAssign veda argumentos tipo nombre=valor (en sysctl cambian el valor).
@@ -414,8 +442,10 @@ func gitRule(args []string) error {
 		return fmt.Errorf("%q is not a read-only git subcommand", sub)
 	}
 	for _, a := range rest {
-		if a == "--output" || strings.HasPrefix(a, "--output=") || a == "--ext-diff" || strings.HasPrefix(a, "--exec") {
-			return fmt.Errorf("the option %s is not allowed", a)
+		for _, f := range []string{"--output", "--ext-diff", "--exec-path", "--open-files-in-pager"} {
+			if isFlag(a, f) {
+				return fmt.Errorf("the option %s is not allowed", a)
+			}
 		}
 	}
 	switch sub {
@@ -439,7 +469,7 @@ func gitRule(args []string) error {
 		}
 	case "grep": // -O / --open-files-in-pager ejecutan un programa
 		for _, a := range rest {
-			if strings.HasPrefix(a, "-O") || strings.HasPrefix(a, "--open-files-in-pager") {
+			if strings.HasPrefix(a, "-O") {
 				return fmt.Errorf("the option %s runs a program", a)
 			}
 		}
