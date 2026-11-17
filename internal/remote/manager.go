@@ -151,6 +151,13 @@ type Session struct {
 	host       string
 	sharedWith atomic.Bool
 
+	// Terminal de mongosh (ver mongo.go): el puente la muestra como "mongo" y
+	// no le manda comandos de shell. cleanup cierra lo que se abrió para ella
+	// (el túnel SSH, la carpeta de los scripts).
+	mongo   bool
+	scripts string // carpeta de los scripts de varias líneas (ver mongoScript)
+	cleanup []func()
+
 	noShell atomic.Bool // el servidor no deja ejecutar comandos (ver Copy)
 
 	capsMu sync.Mutex
@@ -699,6 +706,9 @@ func (m *Manager) Close(id string) {
 		}
 		if s.shared != nil {
 			s.shared.release()
+		}
+		for _, f := range s.cleanup {
+			f()
 		}
 	})
 }

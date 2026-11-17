@@ -172,9 +172,13 @@ export function cycleTab(dir: 1 | -1) {
 }
 
 export function openForConnection(c: Connection, kind: TabKind) {
-  // Las conexiones RDP y VNC solo tienen escritorio remoto.
+  // Las conexiones RDP y VNC solo tienen escritorio remoto; las MongoDB, la terminal de mongosh.
+  if (c.protocol === 'mongo') kind = 'terminal'
   openTab({ kind: c.protocol === 'rdp' || c.protocol === 'vnc' ? c.protocol : kind, connId: c.id, title: c.name, color: c.color })
 }
+
+/** La pestaña es de una conexión MongoDB (una terminal de mongosh): no tiene SFTP ni reenvíos. */
+export const isMongoTab = (t: Pick<Tab, 'connId'>) => get(connections).find((c) => c.id === t.connId)?.protocol === 'mongo'
 
 /** Abre una carpeta del servidor como un repositorio (árbol de archivos + editor), o activa la que ya está abierta. */
 export function openRepo(from: Pick<Tab, 'connId' | 'color'>, sessionId: string | undefined, dir: string) {

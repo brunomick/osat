@@ -160,7 +160,9 @@
       items: [
         ...(rdp
           ? [{ label: tr('mobile.openRdp'), icon: 'monitor', action: () => open(c) }]
-          : [
+          : c.protocol === 'mongo'
+            ? [{ label: tr('mobile.openTerminal'), icon: 'terminal', action: () => open(c) }]
+            : [
               { label: tr('mobile.openTerminal'), icon: 'terminal', action: () => open(c) },
               { label: tr('mobile.openSftp'), icon: 'folder', action: () => open(c, 'sftp') },
               { label: tr('mobile.ports'), icon: 'ports', action: () => go(() => openPorts(c)) },

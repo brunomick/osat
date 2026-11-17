@@ -150,7 +150,7 @@
               <span class="tag" style="background:{c.color || 'var(--bg)'}" />
               <span class="name" title={c.name}>{c.name}</span>
               <span class="muted mono host" title={c.host}>{c.host}</span>
-              {#if c.protocol === 'rdp'}<span class="proto">RDP</span>{:else if c.protocol === 'vnc'}<span class="proto">VNC</span>{/if}
+              {#if c.protocol === 'rdp'}<span class="proto">RDP</span>{:else if c.protocol === 'vnc'}<span class="proto">VNC</span>{:else if c.protocol === 'mongo'}<span class="proto">MongoDB</span>{/if}
             </label>
           </div>
         {/if}

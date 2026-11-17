@@ -15,7 +15,7 @@
   import { isAndroid, keys } from '../lib/platform'
   import { resolve } from '../lib/termthemes'
   import { uiTheme } from '../lib/theme'
-  import { closeTab, connections, handoffs, LOCAL, patchTab, saveTextRequest, settings, snippetsRequest, tabs, toast, type Tab } from '../lib/stores'
+  import { closeTab, connections, handoffs, isMongoTab, LOCAL, patchTab, saveTextRequest, settings, snippetsRequest, tabs, toast, type Tab } from '../lib/stores'
   import ContextMenu, { type MenuItem } from './ContextMenu.svelte'
   import SnippetsPanel from './SnippetsPanel.svelte'
 
@@ -171,7 +171,8 @@
       return
     }
     // Con texto, la conexión se cortó (no fue un exit): se reintenta sola.
-    if (msg && tab.connId !== LOCAL) {
+    // mongosh que se cierra al arrancar no se reintenta: casi siempre es la contraseña o la dirección.
+    if (msg && tab.connId !== LOCAL && !isMongoTab(tab)) {
       term.write(`\r\n\x1b[33m● ${tr('term.closedMsg', { msg })}\x1b[0m\r\n`)
       autoReconnect()
       return

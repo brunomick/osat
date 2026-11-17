@@ -101,7 +101,7 @@ func (a *App) exportEntries(ids []string, withSecrets bool) ([]osatfile.Entry, e
 			continue
 		}
 		e := osatfile.Entry{
-			Name: c.Name, Group: c.Group, Protocol: c.Protocol, Host: c.Host, Port: c.Port,
+			Name: c.Name, Group: c.Group, Protocol: c.Protocol, URI: c.URI, Host: c.Host, Port: c.Port,
 			User: c.User, Domain: c.Domain, Gateway: c.Gateway, AuthType: c.AuthType, KeyPath: c.KeyPath, Color: c.Color,
 			Jump: names[c.JumpID], ForwardAgent: c.ForwardAgent, InitialCommand: c.InitialCommand, Env: c.Env, Pins: c.Pins,
 			UseDefaultCreds: c.UseDefaultCreds,
@@ -181,7 +181,7 @@ func (a *App) ImportOsat(items []importer.Item) (int, error) {
 			keyPath = p
 		}
 		c, err := a.store.Save(store.ConnectionInput{Connection: store.Connection{
-			Name: it.Name, Group: it.Group, Protocol: e.Protocol,
+			Name: it.Name, Group: it.Group, Protocol: e.Protocol, URI: e.URI,
 			Host: e.Host, Port: e.Port, User: e.User, Domain: e.Domain, Gateway: e.Gateway,
 			AuthType: e.AuthType, KeyPath: keyPath, Color: e.Color,
 			ForwardAgent: e.ForwardAgent, InitialCommand: e.InitialCommand, Env: e.Env, Pins: e.Pins,

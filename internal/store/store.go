@@ -43,17 +43,24 @@ const (
 
 // Protocolos de conexión.
 const (
-	ProtoSSH = "ssh"
-	ProtoRDP = "rdp"
-	ProtoVNC = "vnc"
+	ProtoSSH   = "ssh"
+	ProtoRDP   = "rdp"
+	ProtoVNC   = "vnc"
+	ProtoMongo = "mongo" // MongoDB: se abre con mongosh en una terminal de esta PC
 )
+
+// IsSSH dice si una conexión con ese protocolo es SSH (las viejas no lo tienen).
+func IsSSH(protocol string) bool { return protocol == "" || protocol == ProtoSSH }
 
 // Connection es un servidor guardado.
 type Connection struct {
-	ID        string   `json:"id"`
-	Name      string   `json:"name"`
-	Group     string   `json:"group"`
-	Protocol  string   `json:"protocol,omitempty"` // "" o "ssh" = SSH/SFTP; "rdp" o "vnc" = escritorio remoto
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Group    string `json:"group"`
+	Protocol string `json:"protocol,omitempty"` // "" o "ssh" = SSH/SFTP; "rdp" o "vnc" = escritorio remoto; "mongo" = MongoDB
+	// Solo MongoDB: la cadena de conexión, sin la contraseña (va al llavero).
+	// Host, Port y User se sacan de ella.
+	URI       string   `json:"uri,omitempty"`
 	Host      string   `json:"host"`
 	Port      int      `json:"port"`
 	User      string   `json:"user"`
@@ -272,10 +279,18 @@ func validate(c *Connection) error {
 	c.Group = NormalizeGroup(c.Group)
 	c.Domain = strings.TrimSpace(c.Domain)
 	c.Gateway = strings.TrimSpace(c.Gateway)
+	if c.Protocol == ProtoMongo {
+		if err := validateMongo(c); err != nil { // de la cadena salen host, puerto y usuario
+			return err
+		}
+	} else {
+		c.URI = ""
+	}
 	if c.Host == "" {
 		return i18n.Err("data.theHostIsRequired")
 	}
 	switch c.Protocol {
+	case ProtoMongo:
 	case ProtoVNC:
 		if c.Port == 0 {
 			c.Port = 5900
@@ -338,13 +353,18 @@ func validate(c *Connection) error {
 // Save crea o actualiza una conexión y gestiona su secreto en el keyring.
 func (s *Store) Save(in ConnectionInput) (Connection, error) {
 	c := in.Connection
+	if c.Protocol == ProtoMongo && in.Secret == "" {
+		// Una cadena pegada con la contraseña adentro: la contraseña va al llavero.
+		in.Secret = mongoPassword(c.URI)
+	}
 	if err := validate(&c); err != nil {
 		return Connection{}, err
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	// Sin usuario propio vale si hay uno por defecto (VNC solo tiene contraseña).
-	if c.User == "" && c.Protocol != ProtoVNC && s.defaults.User == "" {
+	// Sin usuario propio vale si hay uno por defecto (VNC solo tiene contraseña;
+	// MongoDB puede no pedir usuario).
+	if c.User == "" && c.Protocol != ProtoVNC && c.Protocol != ProtoMongo && s.defaults.User == "" {
 		return Connection{}, i18n.Err("data.theUsernameIsRequired")
 	}
 	if err := s.checkJumpLocked(c); err != nil {
@@ -404,7 +424,7 @@ func (s *Store) checkJumpLocked(c Connection) error {
 			return i18n.Err("data.theJumpHostConnectionDoes")
 		case id == c.ID:
 			return i18n.Err("data.theConnectionCanTJump")
-		case j.Protocol == ProtoRDP || j.Protocol == ProtoVNC:
+		case !IsSSH(j.Protocol):
 			return i18n.Err("data.youCanOnlyJumpThrough")
 		case n >= MaxJumps:
 			return i18n.Err("data.tooManyChainedJumpHosts", MaxJumps)

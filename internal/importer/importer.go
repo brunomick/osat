@@ -1,5 +1,6 @@
-// Package importer lee las sesiones guardadas de PuTTY, WinSCP, mRemoteNG y
-// el config de OpenSSH (openssh.go) para darlas de alta como conexiones de osat, con las contraseñas que
+// Package importer lee las sesiones guardadas de PuTTY, WinSCP, mRemoteNG,
+// el config de OpenSSH (openssh.go) y las conexiones exportadas de MongoDB
+// Compass (compass.go) para darlas de alta como conexiones de osat, con las contraseñas que
 // guardan WinSCP y mRemoteNG (secrets.go; PuTTY no guarda contraseñas) y la
 // ruta de las claves privadas.
 package importer
@@ -41,7 +42,8 @@ const (
 type Item struct {
 	Name     string         `json:"name"`
 	Group    string         `json:"group"`
-	Protocol string         `json:"protocol"` // store.ProtoSSH o store.ProtoRDP
+	Protocol string         `json:"protocol"`      // store.ProtoSSH, ProtoRDP, ProtoVNC o ProtoMongo
+	URI      string         `json:"uri,omitempty"` // solo MongoDB: la cadena de conexión, sin la contraseña
 	Host     string         `json:"host"`
 	Port     int            `json:"port"`
 	User     string         `json:"user"`
@@ -108,6 +110,8 @@ func Scan(source, path, master string, existing []store.Connection) (Result, err
 		r, err = scanMRemoteNG(path, master)
 	case OpenSSH:
 		r, err = scanOpenSSH(path)
+	case Compass:
+		r, err = scanCompass(path, master, existing)
 	default:
 		return Result{}, i18n.Err("data.unknownImportSourceQ", source)
 	}

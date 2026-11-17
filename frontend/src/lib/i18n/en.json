@@ -247,7 +247,9 @@
     "portsTip": "Port forwarding (Redis, RabbitMQ, databases, Kubernetes...)",
     "ports": "Port forwarding",
     "edit": "Edit",
-    "usesDefaults": "Uses the default credentials"
+    "usesDefaults": "Uses the default credentials",
+    "tipMongo": "Double-click: open mongosh",
+    "openMongo": "Open mongosh"
   },
   "titlebar": {
     "about": "About osat",
@@ -331,7 +333,12 @@
     "userDefault": "empty = the default ({user})",
     "useDefaults": "Use default credentials",
     "useDefaultsHelp": "Connects with the default username ({user}) and its password, from Settings → Default credentials.",
-    "useDefaultsNone": "There are no default credentials yet: set them in Settings → Default credentials."
+    "useDefaultsNone": "There are no default credentials yet: set them in Settings → Default credentials.",
+    "mongoUri": "Connection string",
+    "mongoUriPlaceholder": "mongodb://user@server:27017/db",
+    "mongoUriHelp": "The same one you use in Compass (mongodb:// or mongodb+srv://). If it includes the password, osat takes it out of the string and keeps it in the keychain.",
+    "mongoshHelp": "It opens with the mongosh installed on this PC, in a terminal you can share with Claude Code. If you are going to share it, use a read-only user.",
+    "jumpHelpMongo": "For databases that can only be reached from an SSH server (the SSH tunnel in Compass): mongosh goes out through that connection."
   },
   "import": {
     "putty": {
@@ -394,7 +401,15 @@
       "other": "and {count} web sites (ones you already have aren't duplicated)"
     },
     "extrasDone": "Snippets and sites imported",
-    "withDefaults": "Use the default credentials in the file ({user}): they replace this osat’s"
+    "withDefaults": "Use the default credentials in the file ({user}): they replace this osat’s",
+    "compass": {
+      "where": "Exported connections (Connections › Export)",
+      "file": "a .json, with or without a passphrase"
+    },
+    "compassPassTitle": "Compass file passphrase",
+    "compassPassMsg": "The file was exported with a passphrase that protects the passwords.",
+    "compassPassBad": "That's not the passphrase. Try again.",
+    "compassPassLabel": "Passphrase"
   },
   "export": {
     "pwShort": "The password must be at least 8 characters long.",

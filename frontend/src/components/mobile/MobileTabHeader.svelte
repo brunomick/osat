@@ -5,13 +5,16 @@
   import Icon from '../../lib/Icon.svelte'
   import { backFrom, mobileScreen } from '../../lib/mobile'
   import { tabTitle } from '../../lib/tabtitle'
-  import { closeTab, LOCAL, openTab, tabs, type Tab, type TabKind } from '../../lib/stores'
+  import { closeTab, connections, LOCAL, openTab, tabs, type Tab, type TabKind } from '../../lib/stores'
 
   export let tab: Tab
 
   // Terminal ↔ SFTP del mismo servidor, reutilizando la conexión (como "Abrir SFTP en esta conexión").
+  // Las de MongoDB (mongosh) no tienen SFTP.
   let other: TabKind | null
-  $: other = tab.connId && tab.connId !== LOCAL && (tab.kind === 'terminal' || tab.kind === 'sftp') ? (tab.kind === 'terminal' ? 'sftp' : 'terminal') : null
+  $: mongo = $connections.find((c) => c.id === tab.connId)?.protocol === 'mongo'
+  $: other =
+    tab.connId && tab.connId !== LOCAL && !mongo && (tab.kind === 'terminal' || tab.kind === 'sftp') ? (tab.kind === 'terminal' ? 'sftp' : 'terminal') : null
 
   function switchKind() {
     if (!other) return

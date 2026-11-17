@@ -6,7 +6,7 @@ import { hasKey, tr } from './i18n'
 import type { TermThemeSetting, UiTheme } from './termthemes'
 
 export type AuthType = 'password' | 'key' | 'agent'
-export type Protocol = 'ssh' | 'rdp' | 'vnc'
+export type Protocol = 'ssh' | 'rdp' | 'vnc' | 'mongo'
 
 export interface PinnedDir {
   path: string
@@ -19,6 +19,8 @@ export interface Connection {
   name: string
   group: string
   protocol?: Protocol // ausente = ssh
+  /** Solo MongoDB: la cadena de conexión, sin la contraseña. De ella salen host, port y user. */
+  uri?: string
   host: string
   port: number
   user: string
@@ -250,13 +252,15 @@ export interface BrowserEvent {
   canFwd: boolean
 }
 
-export type ImportSource = 'putty' | 'winscp' | 'mremoteng' | 'openssh' | 'osat'
+export type ImportSource = 'putty' | 'winscp' | 'mremoteng' | 'openssh' | 'osat' | 'compass'
 
-/** Sesión encontrada en PuTTY / WinSCP / mRemoteNG, lista para importar. */
+/** Sesión encontrada en PuTTY / WinSCP / mRemoteNG / Compass, lista para importar. */
 export interface ImportItem {
   name: string
   group: string
   protocol: Protocol
+  /** Solo MongoDB: la cadena de conexión, sin la contraseña. */
+  uri?: string
   host: string
   port: number
   user: string
@@ -652,6 +656,8 @@ export const api = {
   forgetHostKey: (host: string): Promise<void> => app().ForgetHostKey(host),
 
   openTerminal: (r: ConnectRequest): Promise<SessionInfo> => app().OpenTerminal(r),
+  /** Conexión MongoDB: abre el mongosh instalado en esta PC en una terminal (osat escribe la contraseña cuando la pide). */
+  openMongoShell: (r: ConnectRequest): Promise<SessionInfo> => app().OpenMongoShell(r),
   bridgeStatus: (): Promise<BridgeStatus> => app().BridgeStatus(),
   bridgeSetEnabled: (on: boolean): Promise<BridgeStatus> => app().BridgeSetEnabled(on),
   /** Cambia el modo de permisos; las reglas del panel siguen al modo. */

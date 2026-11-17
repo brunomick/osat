@@ -53,7 +53,10 @@ func (m *Manager) SharedTerminals() []bridge.Terminal {
 			continue
 		}
 		t := bridge.Terminal{ID: s.ID, Title: s.title, Kind: "ssh", Host: s.host}
-		if s.local != nil {
+		switch {
+		case s.mongo:
+			t.Kind = "mongo"
+		case s.local != nil:
 			t.Kind = "local"
 		}
 		out = append(out, t)
@@ -71,6 +74,11 @@ func (m *Manager) TerminalReady(id string) error {
 	s, err := m.sharedSession(id)
 	if err != nil {
 		return err
+	}
+	if s.mongo {
+		// Lo que verifica run_readonly_command son comandos de shell: en mongosh
+		// (JavaScript) no prueba nada.
+		return errors.New("this terminal is a MongoDB shell (mongosh, JavaScript), not a system shell, so osat cannot verify commands as read-only here: use run_command, which asks the user for approval")
 	}
 	if s.screen.InAltScreen() {
 		return errors.New("the terminal is running a full-screen program (vim, less, top...): ask the user to leave it first")
@@ -113,6 +121,23 @@ func (m *Manager) TerminalRun(id, command string, timeout time.Duration) (string
 	if err != nil {
 		return "", false, err
 	}
+	if s.mongo {
+		line, remove, err := mongoScript(s, command)
+		if err != nil {
+			return "", false, err
+		}
+		command = line
+		out, timedOut, err := m.typeAndWait(s, command, timeout)
+		if !timedOut { // si sigue corriendo, el archivo se borra al cerrar la terminal
+			remove()
+		}
+		return out, timedOut, err
+	}
+	return m.typeAndWait(s, command, timeout)
+}
+
+// typeAndWait tipea el comando (una línea) y espera a que la salida se asiente.
+func (m *Manager) typeAndWait(s *Session, command string, timeout time.Duration) (string, bool, error) {
 	_, prompt := s.screen.CursorLine() // lo que hay antes del cursor: el prompt
 	mark := s.screen.Mark()
 	w0, _ := s.screen.Writes()

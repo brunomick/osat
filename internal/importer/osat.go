@@ -31,7 +31,7 @@ func ScanOsat(path, password string, existing []store.Connection) (Result, []osa
 	}
 	for i, e := range entries {
 		r.Items = append(r.Items, Item{
-			Name: e.Name, Group: e.Group, Protocol: e.Protocol,
+			Name: e.Name, Group: e.Group, Protocol: e.Protocol, URI: e.URI,
 			Host: e.Host, Port: e.Port, User: e.User, Domain: e.Domain,
 			AuthType: e.AuthType, KeyPath: e.KeyPath, Jump: e.Jump,
 			ForwardAgent: e.ForwardAgent, InitialCommand: e.InitialCommand, Env: e.Env,

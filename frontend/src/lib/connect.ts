@@ -2,6 +2,7 @@ import { get } from 'svelte/store'
 import { api, codedText, parseError, type OsatError, type SessionInfo } from './api'
 import { askSecret, confirmDialog } from './dialog'
 import { tr } from './i18n'
+import { isMongo } from './protocol'
 import { NeedsUserError } from './reconnect'
 import { connections, LOCAL, reloadConnections, type Tab } from './stores'
 
@@ -29,7 +30,9 @@ export async function connectTab(tab: Tab, cols = 120, rows = 32, opts: ConnectO
   if (tab.kind === 'terminal' && tab.connId === LOCAL) {
     return api.openLocalTerminal(tab.shell ?? '', tab.initialDir ?? '', cols, rows)
   }
-  if (tab.fromSession) {
+  const conn = get(connections).find((c) => c.id === tab.connId)
+  // Una de MongoDB no tiene conexión SSH que reutilizar: cada pestaña abre su mongosh.
+  if (tab.fromSession && !isMongo(conn)) {
     try {
       if (tab.kind === 'terminal') return await api.openTerminalFrom(tab.fromSession, cols, rows)
       return tab.kind === 'ports' ? await api.openTunnelFrom(tab.fromSession) : await api.openSFTPFrom(tab.fromSession)
@@ -38,7 +41,6 @@ export async function connectTab(tab: Tab, cols = 120, rows = 32, opts: ConnectO
     }
   }
 
-  const conn = get(connections).find((c) => c.id === tab.connId)
   if (!conn) throw interactive ? new Error(tr('connect.gone')) : new NeedsUserError(tr('connect.gone'))
 
   let secret = ''
@@ -61,7 +63,13 @@ export async function connectTab(tab: Tab, cols = 120, rows = 32, opts: ConnectO
         ...(opts.reconnect ? { reconnect: true } : {}),
       }
       const info =
-        tab.kind === 'terminal' ? await api.openTerminal(req) : tab.kind === 'ports' ? await api.openTunnel(req) : await api.openSFTP(req)
+        isMongo(conn)
+          ? await api.openMongoShell(req)
+          : tab.kind === 'terminal'
+            ? await api.openTerminal(req)
+            : tab.kind === 'ports'
+              ? await api.openTunnel(req)
+              : await api.openSFTP(req)
       if (saveSecret || Object.values(jumpSecrets).some((j) => j.save)) reloadConnections()
       return info
     } catch (e) {

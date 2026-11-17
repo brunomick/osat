@@ -11,6 +11,7 @@
     closeTab,
     connections,
     isAppTab,
+    isMongoTab,
     isServerPinned,
     kindIcon,
     LOCAL,
@@ -89,7 +90,7 @@ import { contextMenuAt, isMenuKey } from '../lib/treenav'
           : []),
         ...(t.kind === 'terminal' ? [{ label: 'Broadcast…', icon: 'terminal', hint: keys('Ctrl+Shift+M'), action: () => broadcastDialogOpen.set(true) }] : []),
         ...(t.kind === 'terminal' ? [{ label: tr('term.saveText'), icon: 'download', action: () => saveTextRequest.set(t.id) }] : []),
-        ...(t.kind === 'rdp' || t.kind === 'vnc' || t.kind === 'local' || t.kind === 'site' || t.connId === LOCAL || isAppTab(t)
+        ...(t.kind === 'rdp' || t.kind === 'vnc' || t.kind === 'local' || t.kind === 'site' || t.connId === LOCAL || isAppTab(t) || isMongoTab(t)
           ? []
           : [
               {

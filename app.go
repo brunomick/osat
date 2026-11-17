@@ -310,7 +310,7 @@ func (a *App) ImportConnections(items []importer.Item) (int, error) {
 			secret = secrets[it.Ref]
 		}
 		c, err := a.store.Save(store.ConnectionInput{Connection: store.Connection{
-			Name: it.Name, Group: it.Group, Protocol: it.Protocol,
+			Name: it.Name, Group: it.Group, Protocol: it.Protocol, URI: it.URI,
 			Host: it.Host, Port: it.Port, User: it.User, Domain: it.Domain, Gateway: it.Gateway,
 			AuthType: it.AuthType, KeyPath: it.KeyPath,
 			ForwardAgent: it.ForwardAgent, InitialCommand: it.InitialCommand, Env: it.Env,
@@ -338,12 +338,12 @@ type importedConn struct {
 func (a *App) linkJumps(saved []importedConn) []error {
 	byName := map[string]string{}
 	for _, c := range a.store.List() {
-		if c.Protocol != store.ProtoRDP && c.Protocol != store.ProtoVNC {
+		if store.IsSSH(c.Protocol) {
 			byName[strings.ToLower(c.Name)] = c.ID
 		}
 	}
 	for _, s := range saved { // las importadas ganan sobre las que ya estaban
-		if s.conn.Protocol != store.ProtoRDP && s.conn.Protocol != store.ProtoVNC {
+		if store.IsSSH(s.conn.Protocol) {
 			byName[strings.ToLower(s.conn.Name)] = s.conn.ID
 		}
 	}
@@ -374,6 +374,7 @@ func (a *App) PickImportFile(source string) (string, error) {
 		importer.MRemoteNG: {DisplayName: i18n.T("native.filterMremoteng"), Pattern: "*.xml"},
 		importer.OpenSSH:   {DisplayName: i18n.T("native.filterOpenssh"), Pattern: "config;*.conf"},
 		importer.Osat:      {DisplayName: i18n.T("native.filterOsat"), Pattern: "*.osat"},
+		importer.Compass:   {DisplayName: i18n.T("native.filterCompass"), Pattern: "*.json"},
 	}
 	opts := runtime.OpenDialogOptions{Title: i18n.T("native.pickImport")}
 	if f, ok := filters[source]; ok {
@@ -407,6 +408,11 @@ func (a *App) OpenSFTPFrom(sessionID string) (remote.SessionInfo, error) {
 
 func (a *App) OpenTerminalFrom(sessionID string, cols, rows int) (remote.SessionInfo, error) {
 	return a.mgr.OpenTerminalFrom(sessionID, cols, rows)
+}
+
+// OpenMongoShell abre mongosh (el instalado en esta PC) conectado a una conexión MongoDB.
+func (a *App) OpenMongoShell(req remote.ConnectRequest) (remote.SessionInfo, error) {
+	return a.mgr.OpenMongoShell(req)
 }
 
 // LocalShells lista las terminales que se pueden abrir en este equipo.

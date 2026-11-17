@@ -33,9 +33,11 @@
   aria-selected="false"
   tabindex="-1"
   style="--d: {depth}"
-  title="{formFields(protocolOf(c)).user && c.user ? `${c.user}@` : ''}{c.host}{c.port !== defaultPort[protocolOf(c)] ? `:${c.port}` : ''} · {c.protocol === 'rdp' || c.protocol === 'vnc'
+  title="{(formFields(protocolOf(c)).user || c.protocol === 'mongo') && c.user ? `${c.user}@` : ''}{c.host}{c.port !== defaultPort[protocolOf(c)] ? `:${c.port}` : ''} · {c.protocol === 'rdp' || c.protocol === 'vnc'
     ? $t('conn.tipRdp')
-    : $t('conn.tipSsh')}"
+    : c.protocol === 'mongo'
+      ? $t('conn.tipMongo')
+      : $t('conn.tipSsh')}"
   data-drop-group={fav ? undefined : c.group}
   data-fav-row={fav ? c.id : undefined}
   data-conn-row={c.id}
@@ -58,6 +60,10 @@
     {:else if c.protocol === 'vnc'}
       <button class="icon" tabindex="-1" title={$t('conn.openRdp')} on:click|stopPropagation={() => openForConnection(c, 'vnc')} aria-label={$t('conn.openRdp')}>
         <Icon name="vnc" size={14} />
+      </button>
+    {:else if c.protocol === 'mongo'}
+      <button class="icon" tabindex="-1" title={$t('conn.openMongo')} on:click|stopPropagation={() => openForConnection(c, 'terminal')} aria-label={$t('conn.openMongo')}>
+        <Icon name="database" size={14} />
       </button>
     {:else}
       <button class="icon" tabindex="-1" title={$t('conn.openTerminal')} on:click|stopPropagation={() => openForConnection(c, 'terminal')} aria-label={$t('conn.openTerminal')}>

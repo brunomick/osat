@@ -11,6 +11,7 @@ const m = vi.hoisted(() => ({
   openTerminalFrom: vi.fn(),
   openTunnelFrom: vi.fn(),
   openSFTPFrom: vi.fn(),
+  openMongoShell: vi.fn(),
   trustHostKey: vi.fn(),
   forgetHostKey: vi.fn(),
   askSecret: vi.fn(),
@@ -32,6 +33,7 @@ vi.mock('./api', async () => {
       openTerminalFrom: m.openTerminalFrom,
       openTunnelFrom: m.openTunnelFrom,
       openSFTPFrom: m.openSFTPFrom,
+      openMongoShell: m.openMongoShell,
       trustHostKey: m.trustHostKey,
       forgetHostKey: m.forgetHostKey,
     },
@@ -116,6 +118,17 @@ describe('connectTab', () => {
       expect(m.openSFTP).toHaveBeenCalledTimes(1)
       expect(m.openTunnel).toHaveBeenCalledTimes(1)
       expect(m.openTerminal).not.toHaveBeenCalled()
+    })
+
+    it('una conexión MongoDB abre mongosh, aunque venga de otra pestaña', async () => {
+      connections.set([target, jump, conn('db', { protocol: 'mongo', uri: 'mongodb://u@db', port: 27017, jumpId: 'jump' })])
+      m.openMongoShell.mockRejectedValueOnce(needSecret({ kind: 'password', connId: 'jump', name: 'Bastión' })).mockResolvedValue(info)
+      m.askSecret.mockResolvedValue({ secret: 'pw-jump', save: false })
+      await expect(connectTab(tab({ connId: 'db', fromSession: 's0' }), 100, 40)).resolves.toBe(info)
+      expect(m.openTerminalFrom).not.toHaveBeenCalled()
+      expect(m.openTerminal).not.toHaveBeenCalled()
+      // La contraseña del salto (el túnel SSH) se pide igual que en una terminal.
+      expect(m.openMongoShell).toHaveBeenLastCalledWith(expect.objectContaining({ connectionId: 'db', jumpSecrets: { jump: { secret: 'pw-jump', save: false } } }))
     })
 
     it('una conexión que ya no existe falla sin llamar al backend', async () => {

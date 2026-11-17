@@ -27,6 +27,7 @@ type Entry struct {
 	Name     string         `json:"name"`
 	Group    string         `json:"group"`
 	Protocol string         `json:"protocol"`
+	URI      string         `json:"uri,omitempty"` // solo MongoDB: la cadena de conexión, sin la contraseña
 	Host     string         `json:"host"`
 	Port     int            `json:"port"`
 	User     string         `json:"user"`

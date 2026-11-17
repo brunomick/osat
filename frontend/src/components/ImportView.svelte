@@ -8,6 +8,7 @@
   import { onMount } from 'svelte'
   import { api, codedText, errorText, parseError, type ImportItem, type ImportResult, type ImportSource } from '../lib/api'
   import { askSecret } from '../lib/dialog'
+  import { defaultPort } from '../lib/protocol'
   import { closeTab, patchTab, reloadConnections, reloadSites, toast, type Tab } from '../lib/stores'
 
   export let tab: Tab
@@ -22,7 +23,10 @@
     { id: 'mremoteng', name: 'mRemoteNG', where: 'import.mremoteng.where', file: 'import.mremoteng.file' },
     { id: 'openssh', name: 'OpenSSH', where: 'import.openssh.where', file: 'import.openssh.file' },
     { id: 'osat', name: 'OSAT', where: 'import.osat.where', file: 'import.osat.file' },
+    { id: 'compass', name: 'MongoDB Compass', where: 'import.compass.where', file: 'import.compass.file' },
   ]
+  // Sin ubicación habitual: primero se elige el archivo exportado.
+  const fileOnly = (s: (typeof sources)[number]) => s.id === 'osat' || s.id === 'compass'
 
   let source: (typeof sources)[number] | null = null
   let result: ImportResult | null = null
@@ -53,11 +57,18 @@
       // Las que ya están en osat arrancan sin marcar.
       selected = new Set(result.items.flatMap((it, i) => (it.exists ? [] : [i])))
     } catch (e) {
-      // mRemoteNG o WinSCP con contraseña maestra: se pide y se vuelve a buscar.
+      // mRemoteNG o WinSCP con contraseña maestra (o Compass exportado con passphrase): se pide y se vuelve a buscar.
       const ke = parseError(e)
       if (ke?.code === 'NEED_SECRET' && ke.data?.kind === 'master') {
         loading = false
-        const pw = await askSecret({ title: tr('import.masterTitle', { name: s.name }), message: codedText(ke), label: tr('import.masterLabel'), allowSave: false, okText: tr('common.open') })
+        const compass = s.id === 'compass'
+        const pw = await askSecret({
+          title: compass ? tr('import.compassPassTitle') : tr('import.masterTitle', { name: s.name }),
+          message: compass ? (ke.data?.reason === 'bad' ? tr('import.compassPassBad') : tr('import.compassPassMsg')) : codedText(ke),
+          label: compass ? tr('import.compassPassLabel') : tr('import.masterLabel'),
+          allowSave: false,
+          okText: tr('common.open'),
+        })
         if (pw) return scan(s, path, pw.secret)
       }
       error = errorText(e)
@@ -78,8 +89,8 @@
     }
   }
 
-  // Un .osat no tiene ubicación habitual: se elige el archivo y se pide su contraseña.
-  async function startOsat(s: (typeof sources)[number]) {
+  // Un .osat (o un export de Compass) no tiene ubicación habitual: se elige el archivo y se pide su contraseña.
+  async function startFile(s: (typeof sources)[number]) {
     source = s
     result = null
     error = ''
@@ -153,8 +164,9 @@
     }
   }
 
+  const protoTag: Partial<Record<ImportItem['protocol'], string>> = { rdp: 'RDP', vnc: 'VNC', mongo: 'MongoDB' }
   const label = (it: ImportItem) =>
-    `${it.user ? it.user + '@' : ''}${it.host}${it.port !== (it.protocol === 'rdp' ? 3389 : 22) ? ':' + it.port : ''}${it.jump ? tr('import.via', { jump: it.jump }) : ''}`
+    `${it.user ? it.user + '@' : ''}${it.host}${it.port !== defaultPort[it.protocol ?? 'ssh'] ? ':' + it.port : ''}${it.jump ? tr('import.via', { jump: it.jump }) : ''}`
 </script>
 
 <div class="page">
@@ -167,7 +179,7 @@
       </p>
       <div class="sources">
         {#each sources as s}
-          <button type="button" class="src" on:click={() => (s.id === 'osat' ? startOsat(s) : scan(s))}>
+          <button type="button" class="src" on:click={() => (fileOnly(s) ? startFile(s) : scan(s))}>
             <span class="name">{s.name}</span>
             <span class="muted">{$t(s.where)}</span>
             <span class="muted">{$t(s.file)}</span>
@@ -181,7 +193,7 @@
     {:else}
       <div class="where">
         <span class="muted small">
-          {#if loading}{source.id === 'osat' ? $t('import.openingFile') : $t('import.searching', { name: source.name })}
+          {#if loading}{fileOnly(source) ? $t('import.openingFile') : $t('import.searching', { name: source.name })}
           {:else if result?.notFound}{$t('import.notFound', { name: source.name })}
           {:else if result}<span class="mono">{result.location}</span>{/if}
         </span>
@@ -215,7 +227,7 @@
               <label class="row" class:dim={it.exists && !selected.has(i)}>
                 <input type="checkbox" checked={selected.has(i)} on:change={() => toggle(i)} />
                 <span class="name" title={it.name}>{it.name}</span>
-                <span class="tag">{it.protocol === 'rdp' ? 'RDP' : 'SSH'}</span>
+                <span class="tag">{protoTag[it.protocol] ?? 'SSH'}</span>
                 <span class="muted mono addr" title={label(it)}>{label(it)}</span>
                 <span class="muted grp" title={it.group}>{it.group}</span>
                 <span class="exists">{it.exists ? $t('import.exists') : ''}</span>

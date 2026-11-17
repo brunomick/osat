@@ -14,7 +14,7 @@ const ATTRS = new Set(['title', 'placeholder', 'aria-label', 'label', 'alt'])
 const EXCEPTIONS = new Set([
   'osat', 'RDP', 'VNC', 'SSH / SFTP', 'Claude MCP', 'Kubernetes', 'Namespace', 'localhost', 'default',
   'Redis', 'RabbitMQ', 'RabbitMQ (web)', 'PostgreSQL', 'MySQL', 'MongoDB', 'Elasticsearch', 'Web',
-  'Running', 'ClusterIP', 'NodePort', 'LoadBalancer', 'PuTTY', 'WinSCP', 'OpenSSH', 'Rosé Pine', 'Rosé Pine Dawn',
+  'Running', 'ClusterIP', 'NodePort', 'LoadBalancer', 'PuTTY', 'WinSCP', 'OpenSSH', 'MongoDB Compass', 'Rosé Pine', 'Rosé Pine Dawn',
   'Español', 'English', 'ab', 'Insert', 'Snippets…', 'Broadcast…', 'root', 'Aa', 'v', '-D', '-R',
   // "Acerca de": el lema y el copyright ya estaban en inglés.
   'OPEN SERVER ADMINISTRATION TOOL', 'All your connections in one app.', 'Copyright (C) 2026 Bruno Mick', 'Open source software under GPL-3.0.',

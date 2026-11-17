@@ -247,7 +247,9 @@
     "portsTip": "Reenvío de puertos (Redis, RabbitMQ, bases de datos, Kubernetes...)",
     "ports": "Reenvío de puertos",
     "edit": "Editar",
-    "usesDefaults": "Usa las credenciales por defecto"
+    "usesDefaults": "Usa las credenciales por defecto",
+    "tipMongo": "Doble clic: abrir mongosh",
+    "openMongo": "Abrir mongosh"
   },
   "titlebar": {
     "about": "Acerca de osat",
@@ -331,7 +333,12 @@
     "userDefault": "vacío = el por defecto ({user})",
     "useDefaults": "Usar credenciales por defecto",
     "useDefaultsHelp": "Se conecta con el usuario por defecto ({user}) y su contraseña, de Ajustes → Credenciales por defecto.",
-    "useDefaultsNone": "Todavía no hay credenciales por defecto: se cargan en Ajustes → Credenciales por defecto."
+    "useDefaultsNone": "Todavía no hay credenciales por defecto: se cargan en Ajustes → Credenciales por defecto.",
+    "mongoUri": "Cadena de conexión",
+    "mongoUriPlaceholder": "mongodb://usuario@servidor:27017/base",
+    "mongoUriHelp": "La misma que usás en Compass (mongodb:// o mongodb+srv://). Si trae la contraseña, osat la saca de la cadena y la guarda en el llavero.",
+    "mongoshHelp": "Se abre con el mongosh instalado en esta PC, en una terminal que podés compartir con Claude Code. Si la vas a compartir, usá un usuario de solo lectura.",
+    "jumpHelpMongo": "Para bases a las que solo se llega desde un servidor SSH (el túnel SSH de Compass): mongosh sale por esa conexión."
   },
   "import": {
     "putty": {
@@ -394,7 +401,15 @@
       "other": "y {count} sitios web (los que ya tenés no se duplican)"
     },
     "extrasDone": "Snippets y sitios importados",
-    "withDefaults": "Usar las credenciales por defecto del archivo ({user}): reemplazan las de este osat"
+    "withDefaults": "Usar las credenciales por defecto del archivo ({user}): reemplazan las de este osat",
+    "compass": {
+      "where": "Conexiones exportadas (Connections › Export)",
+      "file": "un .json, con o sin passphrase"
+    },
+    "compassPassTitle": "Passphrase del archivo de Compass",
+    "compassPassMsg": "El archivo se exportó con una passphrase que protege las contraseñas.",
+    "compassPassBad": "Esa no es la passphrase. Probá de nuevo.",
+    "compassPassLabel": "Passphrase"
   },
   "export": {
     "pwShort": "La contraseña tiene que tener al menos 8 caracteres.",

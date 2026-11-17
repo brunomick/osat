@@ -80,3 +80,15 @@ func Start(id, dir string, cols, rows int) (Proc, Shell, error) {
 	p, err := start(sh, workDir(dir), cols, rows)
 	return p, sh, err
 }
+
+// StartProgram abre un programa de consola (p. ej. mongosh) en una terminal de
+// este equipo, en la carpeta personal. name es el que se muestra en los errores.
+func StartProgram(name, path string, args []string, cols, rows int) (Proc, error) {
+	if cols <= 0 {
+		cols = 120
+	}
+	if rows <= 0 {
+		rows = 32
+	}
+	return start(Shell{ID: name, Name: name, path: path, args: args}, workDir(""), cols, rows)
+}

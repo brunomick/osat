@@ -12,7 +12,8 @@
   const close = () => closeTab(tab.id)
   const colors = ['', '#4f8cff', '#3fb950', '#d29922', '#e5534b', '#b083f0', '#39c5cf', '#f778ba']
 
-  let protocol: Protocol = initial.protocol === 'rdp' || initial.protocol === 'vnc' ? initial.protocol : 'ssh'
+  let protocol: Protocol = initial.protocol === 'rdp' || initial.protocol === 'vnc' || initial.protocol === 'mongo' ? initial.protocol : 'ssh'
+  let uri = initial.uri ?? '' // solo MongoDB
   let domain = initial.domain ?? ''
   let gateway = initial.gateway ?? ''
   let name = initial.name ?? ''
@@ -35,10 +36,12 @@
   let defaults: DefaultCreds = { user: '', hasSecret: false }
   let saving = false
   let hostInput: HTMLInputElement
+  let uriInput: HTMLInputElement
 
   const isEdit = !!initial.id
   // Gateway y Proxy Jump no se combinan: con un gateway, el salto se quita.
   $: fields = formFields(protocol)
+  $: if (!fields.defaults) useDefaults = false
   $: ownUser = fields.user && !useDefaults
   $: ownAuth = !useDefaults
   $: hasGateway = fields.gateway && !!gateway.trim()
@@ -86,14 +89,16 @@
   async function save() {
     saving = true
     try {
-      parseHost()
+      if (!fields.uri) parseHost()
       await api.saveConnection({
         id: initial.id ?? '',
         name,
         group,
         protocol,
-        host,
-        port: Number(port) || defaultPort[protocol],
+        // MongoDB: host, puerto y usuario los saca el backend de la cadena (y la contraseña, si la trae, va al llavero).
+        uri: fields.uri ? uri.trim() : '',
+        host: fields.uri ? '' : host,
+        port: fields.uri ? 0 : Number(port) || defaultPort[protocol],
         user: ownUser ? user : '',
         useDefaultCreds: useDefaults,
         domain: fields.domain ? domain : '',
@@ -141,7 +146,7 @@
 
   onMount(() => {
     patchTab(tab.id, { status: 'ready' })
-    hostInput?.focus()
+    ;(uriInput ?? hostInput)?.focus()
     api.defaultCredsGet().then((d) => (defaults = d)).catch(() => {})
   })
 </script>
@@ -163,9 +168,39 @@
         <button type="button" class:on={protocol === 'ssh'} on:click={() => setProtocol('ssh')}>SSH / SFTP</button>
         <button type="button" class:on={protocol === 'rdp'} on:click={() => setProtocol('rdp')}>{$t('form.rdpBtn')}</button>
         <button type="button" class:on={protocol === 'vnc'} on:click={() => setProtocol('vnc')}>{$t('form.vncBtn')}</button>
+        <button type="button" class:on={protocol === 'mongo'} on:click={() => setProtocol('mongo')}>MongoDB</button>
       </div>
     </div>
 
+    {#if fields.uri}
+      <div class="grid">
+        <label class="span3">
+          {$t('form.mongoUri')}
+          <input
+            class="mono"
+            bind:this={uriInput}
+            bind:value={uri}
+            placeholder={$t('form.mongoUriPlaceholder')}
+            spellcheck="false"
+            autocomplete="off"
+            required
+          />
+          <span class="muted small">{$t('form.mongoUriHelp')}</span>
+        </label>
+        <label class="span3">
+          {$t('form.group')}
+          <input list="osat-groups" bind:value={group} placeholder={$t('form.groupPlaceholder')} />
+          <datalist id="osat-groups">
+            {#each groups as g}<option value={g} />{/each}
+          </datalist>
+        </label>
+        <label class="span3">
+          {$t('form.name')}
+          <input bind:value={name} placeholder={$t('form.namePlaceholder')} />
+        </label>
+      </div>
+      <p class="muted small">{$t('form.mongoshHelp')}</p>
+    {:else}
     <div class="grid">
       <label class="span2">
         {$t('form.host')}
@@ -204,11 +239,14 @@
         <input bind:value={name} placeholder={host ? (fields.user ? `${user}@${host}` : host) : $t('form.namePlaceholder')} />
       </label>
     </div>
+    {/if}
 
-    <label class="check">
-      <input type="checkbox" bind:checked={useDefaults} />
-      {$t('form.useDefaults')}
-    </label>
+    {#if fields.defaults}
+      <label class="check">
+        <input type="checkbox" bind:checked={useDefaults} />
+        {$t('form.useDefaults')}
+      </label>
+    {/if}
     {#if useDefaults}
       <p class="muted small">
         {defaults.user || defaults.hasSecret
@@ -264,7 +302,15 @@
           <option value={c.id}>{c.name}{c.group ? ` — ${c.group}` : ''}</option>
         {/each}
       </select>
-      <span class="muted small">{hasGateway ? $t('form.jumpGatewayHelp') : protocol === 'vnc' ? $t('form.jumpHelpVnc') : $t('form.jumpHelp')}</span>
+      <span class="muted small"
+        >{hasGateway
+          ? $t('form.jumpGatewayHelp')
+          : protocol === 'vnc'
+            ? $t('form.jumpHelpVnc')
+            : protocol === 'mongo'
+              ? $t('form.jumpHelpMongo')
+              : $t('form.jumpHelp')}</span
+      >
     </label>
 
     {#if fields.advanced}

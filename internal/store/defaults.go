@@ -103,8 +103,8 @@ func (s *Store) DefaultSecret() string {
 // donde corresponde: siempre si usa las credenciales por defecto, y si no,
 // solo los que le faltan.
 func (s *Store) WithDefaults(c Connection) Connection {
-	if c.Protocol == ProtoVNC {
-		return c // VNC no tiene usuario
+	if c.Protocol == ProtoVNC || c.Protocol == ProtoMongo {
+		return c // VNC no tiene usuario; el de MongoDB es el de la cadena de conexión
 	}
 	d := s.Defaults()
 	if d.User != "" && (c.UseDefaultCreds || c.User == "") {
@@ -120,6 +120,12 @@ func (s *Store) WithDefaults(c Connection) Connection {
 // la usa, si no la suya y, si no tiene, la por defecto. Para una clave o el
 // agente no hay contraseña por defecto (el secreto sería la passphrase).
 func (s *Store) SecretFor(c Connection) string {
+	if c.Protocol == ProtoMongo { // solo la suya: la por defecto es de los servidores
+		if c.HasSecret {
+			return s.Secret(c.ID)
+		}
+		return ""
+	}
 	if c.UseDefaultCreds {
 		return s.DefaultSecret()
 	}
@@ -142,7 +148,7 @@ func (s *Store) SetUseDefaultCreds(group string, on bool) (int, error) {
 	defer s.mu.Unlock()
 	n := 0
 	for id, c := range s.conns {
-		if group != "" && !isWithin(c.Group, group) || c.UseDefaultCreds == on {
+		if group != "" && !isWithin(c.Group, group) || c.UseDefaultCreds == on || c.Protocol == ProtoMongo {
 			continue
 		}
 		c.UseDefaultCreds = on

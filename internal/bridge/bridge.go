@@ -26,7 +26,7 @@ import (
 type Terminal struct {
 	ID    string `json:"id"`
 	Title string `json:"title"`
-	Kind  string `json:"kind"` // "ssh" o "local"
+	Kind  string `json:"kind"` // "ssh", "local" o "mongo" (mongosh)
 	Host  string `json:"host,omitempty"`
 }
 
@@ -68,7 +68,7 @@ func (s *Server) SetAuto(on bool) { s.auto.Store(on) }
 // instructions es lo que ve el modelo al conectarse.
 func (s *Server) instructions() string {
 	const head = "These are terminals the user opened in osat and explicitly shared with you; they may be production servers or shells on the user's own PC. Use list_terminals first. "
-	const tail = "To drive an interactive program running in a terminal (a TUI such as opencode, vim or a database client), use read_terminal to see its screen and send_input to type into it."
+	const tail = "To drive an interactive program running in a terminal (a TUI such as opencode, vim or a database client), use read_terminal to see its screen and send_input to type into it. " + mongoNote
 	if s.auto.Load() {
 		return head + "The user has allowed you to run anything in them without asking each time, so run_command, send_input and interrupt do not need approval or an explanation. " +
 			"That does not widen what you were asked to do: only do what the user asked for, and be careful with anything destructive. " + tail
@@ -76,6 +76,12 @@ func (s *Server) instructions() string {
 	return head + "To inspect, use run_readonly_command (no approval needed; osat only accepts commands it can verify are read-only). " +
 		"run_command, send_input and interrupt change things and the user is asked to approve each one: before calling them, explain in your message what the command does and why, and fill in what_it_does and why. Only do what the user asked for. " + tail
 }
+
+// mongoNote explica las terminales "mongo": mongosh, no una shell del sistema.
+const mongoNote = "Terminals of kind mongo run mongosh (the MongoDB Shell, JavaScript) connected to a database, not a system shell: " +
+	"run_readonly_command does not work there; use run_command with mongosh commands (show dbs, use <db>, db.<coll>.find(...).limit(...)). " +
+	"A multi-line command is run as a script with load(). Keep queries bounded (limit, projection, maxTimeMS), since the database may be in production, " +
+	"and stay inside the database: do not use require(), fs, child_process or other Node.js APIs, which would act on the user's PC."
 
 // Start empieza a escuchar en 127.0.0.1:port (solo esta PC). Devuelve error si
 // el puerto está ocupado.
@@ -330,7 +336,7 @@ func props(extra obj, withExplain bool) obj {
 var toolDefs = []obj{
 	{
 		"name":        "list_terminals",
-		"description": "List the osat terminals the user has shared with you (SSH sessions and local shells). Other terminals are not visible.",
+		"description": "List the osat terminals the user has shared with you (SSH sessions, local shells and MongoDB shells, kind mongo). Other terminals are not visible.",
 		"inputSchema": obj{"type": "object", "properties": obj{}},
 		"annotations": hintRead,
 	},
@@ -371,7 +377,7 @@ var toolDefs = []obj{
 			"type":     "object",
 			"required": []string{"id", "command", "what_it_does", "why"},
 			"properties": props(obj{
-				"command":         obj{"type": "string", "description": "The command line to run. It is typed followed by Enter."},
+				"command":         obj{"type": "string", "description": "The command line to run. It is typed followed by Enter. In a mongo terminal it may span several lines: it is then run as a script with load()."},
 				"timeout_seconds": obj{"type": "integer", "description": "How long to wait for the output (default 20, max 120)."},
 			}, true),
 		},
