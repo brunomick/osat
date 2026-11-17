@@ -28,6 +28,11 @@ func init() {
 		"mongo.compassProxy":         {es: "%s: usa un proxy de la aplicación; osat conecta sin él", en: "%s: it uses an application proxy; osat connects without it"},
 		"mongo.compassOtherSecret":   {es: "%s: trae una contraseña de %s que osat no importa", en: "%s: it has a %s password that osat doesn't import"},
 		"mongo.compassSSHNoHost":     {es: "%s: el túnel SSH no tiene host (se importa sin túnel)", en: "%s: the SSH tunnel has no host (imported without the tunnel)"},
+		"mongo.compassRecent":        {es: "Compass (recientes)", en: "Compass (recent)"},
+		"mongo.compassBadStoredFile": {es: "%s: el archivo de la conexión está dañado", en: "%s: the connection file is damaged"},
+		"mongo.compassNoSecrets":     {es: "no se pudieron leer las contraseñas que guarda Compass (%v): las conexiones se importan sin ellas", en: "couldn't read the passwords Compass keeps (%v): the connections are imported without them"},
+		"mongo.compassSecretFailed":  {es: "%s: no se pudo leer la contraseña guardada en Compass (se importa sin ella)", en: "%s: couldn't read the password saved in Compass (imported without it)"},
+		"mongo.compassSecretsOS":     {es: "en este sistema osat todavía no lee el llavero de Compass; para traer las contraseñas, exportá las conexiones desde Compass con passphrase", en: "on this system osat can't read Compass's keychain yet; to bring the passwords, export the connections from Compass with a passphrase"},
 		"native.filterCompass":       {es: "Conexiones exportadas de MongoDB Compass (*.json)", en: "MongoDB Compass exported connections (*.json)"},
 	} {
 		catalog[k] = v

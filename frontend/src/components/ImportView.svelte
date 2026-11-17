@@ -26,7 +26,7 @@
     { id: 'compass', name: 'MongoDB Compass', where: 'import.compass.where', file: 'import.compass.file' },
   ]
   // Sin ubicación habitual: primero se elige el archivo exportado.
-  const fileOnly = (s: (typeof sources)[number]) => s.id === 'osat' || s.id === 'compass'
+  const fileOnly = (s: (typeof sources)[number]) => s.id === 'osat'
 
   let source: (typeof sources)[number] | null = null
   let result: ImportResult | null = null
@@ -212,6 +212,8 @@
             {$t('import.winscpHow')}
           {:else if source.id === 'openssh'}
             {$t('import.opensshHow', { path: '~/.ssh/config' })}
+          {:else if source.id === 'compass'}
+            {$t('import.compassHow')}
           {:else}
             {$t('import.mremotengHow', { path: '%APPDATA%\\mRemoteNG\\confCons.xml' })}
           {/if}

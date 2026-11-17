@@ -403,9 +403,10 @@
     "extrasDone": "Snippets and sites imported",
     "withDefaults": "Use the default credentials in the file ({user}): they replace this osat’s",
     "compass": {
-      "where": "Exported connections (Connections › Export)",
-      "file": "a .json, with or without a passphrase"
+      "where": "Connections saved in Compass, with their passwords",
+      "file": "or an exported .json"
     },
+    "compassHow": "In Compass: Connections › Export saved connections, then choose that file here. If you export it with a passphrase, it also brings the passwords.",
     "compassPassTitle": "Compass file passphrase",
     "compassPassMsg": "The file was exported with a passphrase that protects the passwords.",
     "compassPassBad": "That's not the passphrase. Try again.",

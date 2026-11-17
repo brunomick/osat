@@ -3,6 +3,7 @@ package importer
 import (
 	"errors"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -126,8 +127,60 @@ func TestCompassRejectsOtherFiles(t *testing.T) {
 	if _, err := Scan(Compass, write(t, "roto.json", []byte(broken)), compassPassphrase, nil); err == nil || errors.Is(err, ErrBadMasterPassword) {
 		t.Fatalf("datos dañados: %v", err)
 	}
-	// Sin archivo no hay dónde buscar: Compass guarda las suyas cifradas con el llavero.
+}
+
+// fakeCompassDir hace que las conexiones "de esta PC" se lean de una carpeta de prueba.
+func fakeCompassDir(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	prev := compassDataDir
+	compassDataDir = func() string { return dir }
+	t.Cleanup(func() { compassDataDir = prev })
+	return dir
+}
+
+func writeCompassConn(t *testing.T, dir, id, body string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Join(dir, "Connections"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "Connections", id+".json"), []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// Sin Compass en esta PC: no se encontró nada (se puede elegir un archivo exportado).
+func TestCompassLocalNotFound(t *testing.T) {
+	fakeCompassDir(t)
 	if r, err := Scan(Compass, "", "", nil); err != nil || !r.NotFound {
-		t.Fatalf("sin archivo: %+v %v", r, err)
+		t.Fatalf("sin Compass: %+v %v", r, err)
+	}
+}
+
+// Las guardadas en esta PC: favoritas en "Compass", recientes aparte, y las
+// de versiones viejas (sin connectionInfo) se ignoran.
+func TestCompassLocalWithoutSecrets(t *testing.T) {
+	dir := fakeCompassDir(t)
+	writeCompassConn(t, dir, "a", `{"_id": "a", "connectionInfo": {"id": "a", "savedConnectionType": "favorite", "favorite": {"name": "Ventas"},
+		"connectionOptions": {"connectionString": "mongodb://lector@db.example.com/ventas"}}, "version": 1}`)
+	writeCompassConn(t, dir, "b", `{"_id": "b", "connectionInfo": {"id": "b", "savedConnectionType": "recent",
+		"connectionOptions": {"connectionString": "mongodb://localhost:27017"}}, "version": 1}`)
+	writeCompassConn(t, dir, "c", `{"_id": "c", "name": "vieja", "isFavorite": true}`)
+	writeCompassConn(t, dir, "d", `no es json`)
+	r, err := Scan(Compass, "", "", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(r.Items) != 2 || r.Location != filepath.Join(dir, "Connections") {
+		t.Fatalf("resultado = %+v", r)
+	}
+	if v := byName(t, r.Items, "Ventas"); v.Group != "Compass" || v.URI != "mongodb://lector@db.example.com/ventas" {
+		t.Fatalf("ventas = %+v", v)
+	}
+	if l := byName(t, r.Items, "localhost"); l.Group == "Compass" {
+		t.Fatalf("la reciente debería ir en otro grupo: %+v", l)
+	}
+	if len(r.Skipped) != 1 || !strings.Contains(r.Skipped[0], "d.json") {
+		t.Fatalf("avisos = %q", r.Skipped)
 	}
 }

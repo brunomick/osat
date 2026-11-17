@@ -29,6 +29,8 @@ import (
 //
 // Si se exportó con passphrase, las contraseñas no están en la cadena ni en el
 // túnel sino cifradas en "connectionSecrets" (ver compassDecrypter).
+//
+// Sin archivo se leen las que Compass guarda en esta PC (compass_local.go).
 const Compass = "compass"
 
 const compassFileType = "Compass Connections"
@@ -54,6 +56,8 @@ type compassConn struct {
 		} `json:"fleOptions"`
 	} `json:"connectionOptions"`
 	ConnectionSecrets string `json:"connectionSecrets"` // base64, cifrado con la passphrase
+	// Solo en las que guarda Compass: "favorite" o "recent" (vacío en las viejas).
+	SavedConnectionType string `json:"savedConnectionType"`
 }
 
 type compassSSH struct {
@@ -107,9 +111,7 @@ func (n *ejsonInt) UnmarshalJSON(b []byte) error {
 
 func scanCompass(path, passphrase string, existing []store.Connection) (Result, error) {
 	if path == "" {
-		// Compass guarda sus conexiones cifradas con el llavero del sistema:
-		// solo se puede leer un archivo exportado.
-		return Result{}, ErrNotFound
+		return scanCompassLocal(existing) // las que guarda Compass en esta PC (compass_local.go)
 	}
 	b, err := os.ReadFile(path)
 	if err != nil {
@@ -144,7 +146,32 @@ func compassItems(b []byte, passphrase string, existing []store.Connection) ([]I
 		return nil, nil, ErrMasterPassword
 	}
 	dec := &compassDecrypter{passphrase: passphrase, keys: map[string][]byte{}}
+	entries := make([]compassEntry, len(f.Connections))
+	for i, c := range f.Connections {
+		entries[i].conn = c
+		if c.ConnectionSecrets != "" {
+			sec, err := dec.secrets(c.ConnectionSecrets)
+			if err != nil {
+				return nil, nil, err
+			}
+			entries[i].sec = sec
+		}
+	}
+	items, skipped := compassToItems(entries, existing)
+	return items, skipped, nil
+}
 
+// compassEntry es una conexión de Compass con sus contraseñas ya descifradas.
+// recent: Compass la guardó como reciente (no como favorita).
+type compassEntry struct {
+	conn   compassConn
+	sec    compassSecrets
+	recent bool
+}
+
+// compassToItems traduce conexiones de Compass (de un archivo exportado o de
+// las que guarda Compass en esta PC).
+func compassToItems(entries []compassEntry, existing []store.Connection) ([]Item, []string) {
 	// Saltos SSH que ya están en osat, por host|puerto|usuario.
 	sshKey := func(host string, port int, user string) string {
 		return fmt.Sprintf("%s|%d|%s", strings.ToLower(host), port, user)
@@ -159,7 +186,12 @@ func compassItems(b []byte, passphrase string, existing []store.Connection) ([]I
 
 	var items []Item
 	var skipped []string
-	for i, c := range f.Connections {
+	for i, e := range entries {
+		c, sec := e.conn, e.sec
+		group := "Compass"
+		if e.recent {
+			group = i18n.T("mongo.compassRecent")
+		}
 		name := ""
 		if c.Favorite != nil {
 			name = strings.TrimSpace(c.Favorite.Name)
@@ -177,12 +209,6 @@ func compassItems(b []byte, passphrase string, existing []store.Connection) ([]I
 		if name == "" {
 			name, _ = u.First()
 		}
-		var sec compassSecrets
-		if c.ConnectionSecrets != "" {
-			if sec, err = dec.secrets(c.ConnectionSecrets); err != nil {
-				return nil, nil, err
-			}
-		}
 		password := u.Password
 		if sec.Password != "" {
 			password = sec.Password
@@ -190,7 +216,7 @@ func compassItems(b []byte, passphrase string, existing []store.Connection) ([]I
 		u.Password = ""
 		host, port := u.First()
 		it := Item{
-			Name: name, Group: "Compass", Protocol: store.ProtoMongo, URI: u.Redacted(),
+			Name: name, Group: group, Protocol: store.ProtoMongo, URI: u.Redacted(),
 			Host: host, Port: port, User: u.User, AuthType: store.AuthPassword, Secret: password,
 		}
 
@@ -228,7 +254,7 @@ func compassItems(b []byte, passphrase string, existing []store.Connection) ([]I
 				case tunnels[key] != "":
 					it.Jump = tunnels[key]
 				default:
-					ssh := Item{Name: th, Group: "Compass", Protocol: store.ProtoSSH, Host: th, Port: tp, User: t.Username, AuthType: store.AuthPassword}
+					ssh := Item{Name: th, Group: group, Protocol: store.ProtoSSH, Host: th, Port: tp, User: t.Username, AuthType: store.AuthPassword}
 					if t.Username != "" {
 						ssh.Name = t.Username + "@" + th
 					}
@@ -245,7 +271,7 @@ func compassItems(b []byte, passphrase string, existing []store.Connection) ([]I
 		}
 		items = append(items, it)
 	}
-	return items, skipped, nil
+	return items, skipped
 }
 
 func orNumber(name string, i int) string {
