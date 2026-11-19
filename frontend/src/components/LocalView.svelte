@@ -11,7 +11,7 @@
   import { allIn, describe, fileDrag, fsViews, parentOf, type FsSource } from '../lib/filedrag'
   import { fileManagerText, isMac, keys, platform } from '../lib/platform'
   import { moveErrorText, transfer } from '../lib/transfer'
-  import { fileClip } from '../lib/fileclip'
+  import { canPaste, copyFiles, fileClip, pasteFromSystem, refreshSystemFiles, systemFiles } from '../lib/fileclip'
   import { get } from 'svelte/store'
   import { defaultShell, downloadFinished, localShells, openEditor, openLocalTerminal, patchTab, toast, type Tab } from '../lib/stores'
 
@@ -248,16 +248,39 @@
   // copiado viene de un SFTP, pegar lo descarga.
   let copying = false
 
-  function copySel(list: FileEntry[]) {
+  async function copySel(list: FileEntry[]) {
     if (!list.length || atDrives) return
     const paths = list.map((e) => e.path)
-    fileClip.set({ source, paths })
+    await copyFiles(source, paths)
     toast(tr('local.copiedHint', { what: describe(paths), keys: keys('Ctrl+V') }), 'info', 2500)
   }
 
+  // Lo copiado fuera de osat (Explorador, escritorio remoto): lo pega el backend.
+  async function pasteSystem(dir: string) {
+    copying = true
+    // Lo de un escritorio remoto se trae del servidor recién ahora: puede tardar.
+    if (get(systemFiles)?.kind === 'virtual') toast(tr('local.pastingFromClipboard'), 'info', 3000)
+    try {
+      const made = await api.localPasteClipboard(dir)
+      toast(tr('local.copiedShort', { what: describe(made) }), 'success', 2500)
+      if (dir === cwd) {
+        await refresh()
+        selected = new Set(made)
+      } else refresh()
+    } catch (e) {
+      toast(errorText(e), 'error', 6000)
+      refresh()
+    } finally {
+      copying = false
+    }
+  }
+
   async function paste(dir = cwd) {
+    if (atDrives || dir === DRIVES || copying) return
+    await refreshSystemFiles()
+    if (pasteFromSystem()) return pasteSystem(dir)
     const clip = get(fileClip)
-    if (!clip || atDrives || dir === DRIVES || copying) return
+    if (!clip) return
     if (clip.source.side === 'remote') {
       if (clip.source.sessionId) fsView.drop(clip.source, clip.paths, dir)
       else toast(tr('local.sftpGone'), 'error')
@@ -303,9 +326,10 @@
     { label: tr('local.terminalHereWith'), icon: 'terminal', action: () => terminalHereWith(dir) },
   ]
 
-  function rowMenu(ev: MouseEvent, e: FileEntry) {
+  async function rowMenu(ev: MouseEvent, e: FileEntry) {
     const many = selected.size > 1
     const sel = entries.filter((x) => selected.has(x.path))
+    await refreshSystemFiles() // para saber si "Pegar dentro" tiene algo que pegar
     menu = {
       x: ev.clientX,
       y: ev.clientY,
@@ -319,7 +343,7 @@
         { separator: true, label: '' },
         { label: tr('term.copy'), icon: 'copy', hint: keys('Ctrl+C'), disabled: atDrives, action: () => copySel(sel) },
         ...(e.isDir && !many && !atDrives
-          ? [{ label: tr('local.pasteInto'), icon: 'paste', disabled: !get(fileClip), action: () => paste(e.path) }]
+          ? [{ label: tr('local.pasteInto'), icon: 'paste', disabled: !canPaste(), action: () => paste(e.path) }]
           : []),
         { label: tr('local.rename'), hint: 'F2', disabled: many || atDrives, action: () => rename(e) },
         { label: tr('local.copyPath'), icon: 'copy', action: () => window.runtime?.ClipboardSetText?.(sel.map((x) => x.path).join('\n')) },
@@ -333,12 +357,13 @@
     }
   }
 
-  function bgMenu(ev: MouseEvent) {
+  async function bgMenu(ev: MouseEvent) {
+    await refreshSystemFiles() // para saber si "Pegar" tiene algo que pegar
     menu = {
       x: ev.clientX,
       y: ev.clientY,
       items: [
-        { label: tr('term.paste'), icon: 'paste', hint: keys('Ctrl+V'), disabled: atDrives || !get(fileClip), action: () => paste() },
+        { label: tr('term.paste'), icon: 'paste', hint: keys('Ctrl+V'), disabled: atDrives || !canPaste(), action: () => paste() },
         { separator: true, label: '' },
         { label: tr('local.newFolder'), icon: 'folderPlus', disabled: atDrives, action: mkdir },
         { label: fileManagerText(tr, 'openIn'), icon: 'external', disabled: atDrives, action: openInExplorer },

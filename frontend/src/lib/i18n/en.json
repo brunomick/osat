@@ -845,6 +845,7 @@
     "download": "Download {what} to {dir}",
     "move": "Move {what} to {dir}",
     "copiedShort": "{what} copied",
+    "pastingFromClipboard": "Getting the copied files… if they come from a remote desktop this can take a while.",
     "newFolder": "New folder",
     "insideOf": "Inside {dir}",
     "deleteForeverTitle": "Delete permanently",

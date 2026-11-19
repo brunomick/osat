@@ -15,7 +15,7 @@
   import { allIn, describe, fileDrag, fsViews, type FsSource } from '../lib/filedrag'
   import { isMac, keys } from '../lib/platform'
   import { moveErrorText, transfer } from '../lib/transfer'
-  import { fileClip } from '../lib/fileclip'
+  import { canPaste, copyFiles, fileClip, pasteFromSystem, refreshSystemFiles, systemFiles } from '../lib/fileclip'
   import { askRoot, isPermissionError } from '../lib/sudo'
   import { get } from 'svelte/store'
   import {
@@ -378,16 +378,37 @@
   // tarda. Si lo copiado viene de "Este equipo", pegar lo sube.
   let copying = false
 
-  function copySel(list: FileEntry[]) {
+  async function copySel(list: FileEntry[]) {
     if (!sessionId || !list.length) return
     const paths = list.map((e) => e.path)
-    fileClip.set({ source, paths })
+    await copyFiles(source, paths)
     toast(tr('local.copiedHint', { what: describe(paths), keys: keys('Ctrl+V') }), 'info', 2500)
   }
 
+  // Lo copiado fuera de osat (Explorador, escritorio remoto) se sube. Lo de un
+  // escritorio remoto se baja antes a esta PC (el backend lo deja en una carpeta
+  // temporal que borra al cerrar osat).
+  async function pasteSystem(dir: string) {
+    copying = true
+    if (get(systemFiles)?.kind === 'virtual') toast(tr('local.pastingFromClipboard'), 'info', 3000)
+    let paths: string[]
+    try {
+      paths = await api.clipboardUploadPaths()
+    } catch (e) {
+      toast(errorText(e), 'error', 6000)
+      return
+    } finally {
+      copying = false
+    }
+    await upload(paths, dir)
+  }
+
   async function paste(dir = cwd) {
+    if (!sessionId || copying) return
+    await refreshSystemFiles()
+    if (pasteFromSystem()) return pasteSystem(dir)
     const clip = get(fileClip)
-    if (!clip || !sessionId || copying) return
+    if (!clip) return
     if (clip.source.side === 'local') return upload(clip.paths, dir)
     if (clip.source.connId !== tab.connId) return toast(tr('sftp.betweenServers'), 'error')
     copying = true
@@ -721,9 +742,10 @@
     })
   }
 
-  function rowMenu(ev: MouseEvent, e: FileEntry) {
+  async function rowMenu(ev: MouseEvent, e: FileEntry) {
     const many = selected.size > 1
     const sel = entries.filter((x) => selected.has(x.path))
+    await refreshSystemFiles() // para saber si "Pegar dentro" tiene algo que pegar
     menu = {
       x: ev.clientX,
       y: ev.clientY,
@@ -750,7 +772,7 @@
         { separator: true, label: '' },
         { label: tr('term.copy'), icon: 'copy', hint: keys('Ctrl+C'), action: () => copySel(sel) },
         ...(e.isDir && !many
-          ? [{ label: tr('local.pasteInto'), icon: 'paste', disabled: !get(fileClip), action: () => paste(e.path) }]
+          ? [{ label: tr('local.pasteInto'), icon: 'paste', disabled: !canPaste(), action: () => paste(e.path) }]
           : []),
         { label: compressing ? tr('sftp.working') : tr('sftp.compressZip'), icon: 'file', disabled: compressing, action: () => compress(sel, '.zip') },
         { label: compressing ? tr('sftp.working') : tr('sftp.compressTarGz'), icon: 'file', disabled: compressing, action: () => compress(sel, '.tar.gz') },
@@ -764,12 +786,13 @@
     }
   }
 
-  function bgMenu(ev: MouseEvent) {
+  async function bgMenu(ev: MouseEvent) {
+    await refreshSystemFiles() // para saber si "Pegar" tiene algo que pegar
     menu = {
       x: ev.clientX,
       y: ev.clientY,
       items: [
-        { label: tr('term.paste'), icon: 'paste', hint: keys('Ctrl+V'), disabled: !get(fileClip), action: () => paste() },
+        { label: tr('term.paste'), icon: 'paste', hint: keys('Ctrl+V'), disabled: !canPaste(), action: () => paste() },
         { separator: true, label: '' },
         { label: tr('sftp.uploadFiles'), icon: 'upload', action: () => uploadDialog() },
         { label: tr('sftp.uploadFolder'), icon: 'upload', action: () => uploadDialog(true) },

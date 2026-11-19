@@ -105,6 +105,7 @@ func termOptions(s settings.Settings) remote.Options {
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 	go a.vpnAutoStart() // en segundo plano: buscar el servidor de la VPN puede tardar
+	go cleanOldClipTemp()
 }
 func (a *App) shutdown(ctx context.Context) {
 	a.bridge.srv.Stop()
@@ -113,6 +114,7 @@ func (a *App) shutdown(ctx context.Context) {
 	a.mgr.CloseAll()
 	a.rdp.CloseAll()
 	a.vnc.CloseAll()
+	cleanClipTemp() // después de cortar las subidas que las usaban
 	a.feLog.flush()
 	slog.Info("cierre")
 }

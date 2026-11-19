@@ -523,6 +523,13 @@ export interface SearchCaps {
   note?: string
 }
 
+/** Archivos en el portapapeles del sistema (internal/winclip): rutas del Explorador o archivos virtuales (escritorio remoto). */
+export interface ClipboardFilesInfo {
+  /** Cambia cada vez que cambia el portapapeles. */
+  seq: number
+  kind: '' | 'paths' | 'virtual'
+}
+
 /** Lo que IronRDP necesita para conectarse por el proxy local (RdpOpen). */
 export interface RdpSession {
   id: string
@@ -778,6 +785,12 @@ export const api = {
   rdpTrustCert: (hostPort: string, fingerprint: string): Promise<void> => app().RdpTrustCert(hostPort, fingerprint),
   rdpSaveSecret: (connectionId: string, secret: string): Promise<void> => app().RdpSaveSecret(connectionId, secret),
   rdpClose: (id: string): Promise<void> => app().RdpClose(id),
+  /** Qué archivos hay en el portapapeles del sistema (solo Windows; kind '' si ninguno). */
+  clipboardFiles: (): Promise<ClipboardFilesInfo> => app().ClipboardFiles(),
+  /** Pega en dir los archivos del portapapeles del sistema; devuelve las rutas creadas. */
+  localPasteClipboard: (dir: string): Promise<string[]> => app().LocalPasteClipboard(dir),
+  /** Rutas para subir lo del portapapeles del sistema (los archivos virtuales se bajan antes a una carpeta temporal). */
+  clipboardUploadPaths: (): Promise<string[]> => app().ClipboardUploadPaths(),
   /** Escritorio remoto con el cliente de Windows (solo Windows). id = id de la pestaña; los eventos llegan como "rdp:native". */
   rdpNativeOpen: (r: {
     tabId: string
