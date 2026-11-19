@@ -102,7 +102,10 @@ func termOptions(s settings.Settings) remote.Options {
 	return o
 }
 
-func (a *App) startup(ctx context.Context) { a.ctx = ctx }
+func (a *App) startup(ctx context.Context) {
+	a.ctx = ctx
+	go a.vpnAutoStart() // en segundo plano: buscar el servidor de la VPN puede tardar
+}
 func (a *App) shutdown(ctx context.Context) {
 	a.bridge.srv.Stop()
 	a.closeBrowser()

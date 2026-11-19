@@ -19,6 +19,7 @@ import (
 
 	"osat/internal/i18n"
 	"osat/internal/store"
+	"osat/internal/vpn"
 )
 
 const dialTimeout = 15 * time.Second
@@ -242,7 +243,7 @@ func dialWithDeadline(addr string, cfg *ssh.ClientConfig, clock *handshakeClock,
 		conn, err = via.DialContext(ctx, "tcp", addr)
 		cancel()
 	} else {
-		conn, err = net.DialTimeout("tcp", addr, dialTimeout)
+		conn, err = vpn.DialTimeout("tcp", addr, dialTimeout)
 	}
 	if err != nil {
 		return nil, err

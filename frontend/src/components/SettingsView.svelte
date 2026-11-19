@@ -14,6 +14,7 @@
   import { version } from '../../package.json'
   import { isAndroid, platform } from '../lib/platform'
   import { checkForUpdates } from '../lib/updates'
+  import { deleteVpn, saveVpn, setVpnEnabled, vpn } from '../lib/vpn'
 
   export let tab: Tab
 
@@ -37,6 +38,44 @@
 
   // Compartir una terminal con el puente apagado abre esta pestaña con "Claude MCP" desplegada (ver toggleShare).
   let claudeCat: HTMLDetailsElement
+  // El botón de la VPN sin una configurada abre esta pestaña con "VPN" desplegada (ver toggleVpn).
+  let vpnCat: HTMLDetailsElement
+  $: if ($settingsSection === 'vpn' && vpnCat) {
+    settingsSection.set(null)
+    vpnCat.open = true
+    vpnCat.scrollIntoView({ block: 'start' })
+  }
+
+  // VPN: el texto del .conf se edita acá y se guarda con el botón (la clave privada nunca vuelve del backend).
+  let vpnConf = ''
+  let vpnLoaded = false
+  let savingVpn = false
+  $: if ($vpn && !vpnLoaded) {
+    vpnConf = $vpn.conf
+    vpnLoaded = true
+  }
+  async function saveVpnConf() {
+    savingVpn = true
+    if (await saveVpn(vpnConf)) {
+      vpnConf = $vpn?.conf ?? vpnConf
+      toast(tr('settings.vpnSaved'))
+    }
+    savingVpn = false
+  }
+  async function importVpnFile(e: Event) {
+    const input = e.currentTarget as HTMLInputElement
+    const file = input.files?.[0]
+    input.value = ''
+    if (!file) return
+    vpnConf = await file.text()
+    await saveVpnConf()
+  }
+  async function removeVpn() {
+    const ok = await confirmDialog({ title: tr('settings.vpnDelete'), message: tr('settings.vpnDeleteConfirm'), okText: tr('settings.vpnDelete'), danger: true })
+    if (!ok) return
+    await deleteVpn()
+    vpnConf = ''
+  }
   $: if ($settingsSection === 'claude' && claudeCat) {
     settingsSection.set(null)
     claudeCat.open = true
@@ -619,6 +658,39 @@
       </div>
     </details>
 
+    <details class="cat" bind:this={vpnCat} open={opened['vpn']} on:toggle={(e) => toggle('vpn', e)}>
+      <summary><Icon name="chevron" size={14} /><h3>{$t('settings.vpn')}</h3></summary>
+      <div class="content">
+        <label class="row check">
+          <input type="checkbox" checked={!!$vpn?.enabled} disabled={!$vpn?.configured} on:change={(e) => setVpnEnabled(e.currentTarget.checked)} />
+          <span>{$t('settings.vpnEnable')}</span>
+        </label>
+        {#if $vpn?.enabled}
+          <p class="small vpnstate {$vpn.status.state}">
+            {$t(`sidebar.vpn_${$vpn.status.state}`, { server: $vpn.status.server ?? '', address: $vpn.status.address ?? '', error: $vpn.status.error ?? '' })}
+          </p>
+        {/if}
+        <textarea
+          class="vpnconf"
+          rows="10"
+          spellcheck="false"
+          autocomplete="off"
+          aria-label={$t('settings.vpnConf')}
+          placeholder={$t('settings.vpnConfPlaceholder')}
+          bind:value={vpnConf}
+        />
+        <div class="pick">
+          <button class="primary" disabled={savingVpn || !vpnConf.trim()} on:click={saveVpnConf}>{$t('settings.vpnSave')}</button>
+          <label class="button">
+            {$t('settings.vpnImport')}
+            <input type="file" accept=".conf,text/plain" hidden on:change={importVpnFile} />
+          </label>
+          <button class="danger" disabled={!$vpn?.configured} on:click={removeVpn}>{$t('settings.vpnDelete')}</button>
+        </div>
+        <p class="muted small">{$t('settings.vpnHelp')}</p>
+      </div>
+    </details>
+
     <details class="cat" open={opened['defaults']} on:toggle={(e) => toggle('defaults', e)}>
       <summary><Icon name="chevron" size={14} /><h3>{$t('settings.defaults')}</h3></summary>
       <form class="content" on:submit|preventDefault={() => saveDefaults()}>
@@ -751,6 +823,35 @@
   }
   .small {
     font-size: 12px;
+  }
+  .vpnconf {
+    max-width: 676px;
+    font-family: var(--mono);
+    font-size: 12px;
+    resize: vertical;
+  }
+  .vpnstate.on {
+    color: var(--success);
+  }
+  .vpnstate.connecting {
+    color: var(--warning);
+  }
+  .vpnstate.noResponse,
+  .vpnstate.error {
+    color: var(--danger);
+  }
+  /* "Importar .conf": un label que abre el selector de archivos, con el aspecto de un botón. */
+  label.button {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-3);
+    cursor: pointer;
+  }
+  label.button:hover {
+    background: var(--bg-4);
   }
   footer {
     display: flex;

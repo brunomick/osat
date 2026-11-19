@@ -24,6 +24,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"osat/internal/vpn"
 )
 
 const gatewayPath = "/remoteDesktopGateway/"
@@ -61,7 +63,7 @@ func Connect(ctx context.Context, cfg Config) (*Tunnel, error) {
 		return nil, e
 	}
 	start := time.Now()
-	raw, err := (&net.Dialer{}).DialContext(ctx, "tcp", gw)
+	raw, err := vpn.Dial(ctx, "tcp", gw)
 	if err != nil {
 		return failErr(dialError(err))
 	}

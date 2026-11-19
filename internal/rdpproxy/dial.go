@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"osat/internal/i18n"
+	"osat/internal/vpn"
 )
 
 // Variable (no const) para poder acortarlo en los tests.
@@ -110,7 +111,7 @@ func dialServer(addr, serverName string, cr []byte, verify func(tls.ConnectionSt
 		if conn, err = dialVia(via, addr); err != nil {
 			return nil, nil, &netError{err: err}
 		}
-	} else if conn, err = net.DialTimeout("tcp", addr, dialTimeout); err != nil {
+	} else if conn, err = vpn.DialTimeout("tcp", addr, dialTimeout); err != nil {
 		return nil, nil, &netError{wsa: wsaCode(err), err: friendlyDial(err)}
 	}
 	if conn.SetDeadline(time.Now().Add(dialTimeout)) != nil {

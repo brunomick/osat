@@ -462,7 +462,7 @@ export const broadcastDialogOpen = writable(false)
 export const bridge = writable<BridgeStatus>({ enabled: false, port: 0, preferredPort: 0, token: '', mode: 'ask', url: '', command: '', permissions: '' })
 
 /** Sección de Configuración a desplegar y mostrar al abrirla (la consume SettingsView). */
-export const settingsSection = writable<'claude' | null>(null)
+export const settingsSection = writable<'claude' | 'vpn' | null>(null)
 
 export async function loadBridge() {
   bridge.set(await api.bridgeStatus())

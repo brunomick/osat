@@ -208,6 +208,28 @@ export interface WhatsNew {
   notes: string
 }
 
+/** Estado del túnel de la VPN (app_vpn.go). */
+export type VpnState = 'off' | 'connecting' | 'on' | 'noResponse' | 'error'
+
+export interface VpnStatus {
+  state: VpnState
+  error?: string
+  /** IP dentro del túnel. */
+  address?: string
+  /** Endpoint del servidor, como está en el .conf. */
+  server?: string
+  /** Último handshake (segundos Unix). */
+  lastHandshake?: number
+}
+
+export interface VpnInfo {
+  configured: boolean
+  /** El .conf guardado, sin la clave privada (que está en el llavero). */
+  conf: string
+  enabled: boolean
+  status: VpnStatus
+}
+
 /** Estado del bloqueo con contraseña (app_lock.go). */
 export interface LockState {
   /** Hay una contraseña definida. */
@@ -681,6 +703,14 @@ export const api = {
   /** La ventana de osat está al frente y no minimizada (recién ahí se lanza Hello). */
   lockWindowReady: (): Promise<boolean> => app().LockWindowReady(),
   lockNow: (): Promise<void> => app().LockNow(),
+
+  vpnGet: (): Promise<VpnInfo> => app().VpnGet(),
+  vpnStatus: (): Promise<VpnStatus> => app().VpnStatus(),
+  /** Si el texto no trae PrivateKey, se conserva la clave guardada. */
+  vpnSave: (conf: string): Promise<VpnInfo> => app().VpnSave(conf),
+  vpnDelete: (): Promise<VpnInfo> => app().VpnDelete(),
+  /** Al activarla, si el túnel no levanta da error pero la VPN queda activada (nada sale por fuera). */
+  vpnSetEnabled: (on: boolean): Promise<VpnInfo> => app().VpnSetEnabled(on),
 
   trustHostKey: (host: string, fingerprint: string): Promise<void> => app().TrustHostKey(host, fingerprint),
   forgetHostKey: (host: string): Promise<void> => app().ForgetHostKey(host),

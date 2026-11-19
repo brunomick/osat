@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"osat/internal/i18n"
+	"osat/internal/vpn"
 )
 
 // secureURL dice si raw es una dirección de la que se puede bajar algo: https, o http solo hacia esta
@@ -81,7 +82,14 @@ type Asset struct {
 	Size int64
 }
 
-var client = &http.Client{Timeout: 30 * time.Second, CheckRedirect: httpsOnly}
+// transport sale por la VPN de osat cuando está activada (vpn.Dial), como el resto de osat.
+var transport = func() *http.Transport {
+	t := http.DefaultTransport.(*http.Transport).Clone()
+	t.DialContext = vpn.Dial
+	return t
+}()
+
+var client = &http.Client{Timeout: 30 * time.Second, CheckRedirect: httpsOnly, Transport: transport}
 
 // ghRelease es una Release como la devuelve la API de GitHub.
 type ghRelease struct {
@@ -271,7 +279,7 @@ func Download(ctx context.Context, url, dest, userAgent string, progress func(do
 		return err
 	}
 	req.Header.Set("User-Agent", userAgent)
-	resp, err := (&http.Client{CheckRedirect: httpsOnly}).Do(req) // sin el Timeout corto: el archivo puede tardar
+	resp, err := (&http.Client{CheckRedirect: httpsOnly, Transport: transport}).Do(req) // sin el Timeout corto: el archivo puede tardar
 	if err != nil {
 		return err
 	}

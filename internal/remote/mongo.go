@@ -25,6 +25,7 @@ import (
 	"osat/internal/mongouri"
 	"osat/internal/portfwd"
 	"osat/internal/store"
+	"osat/internal/vpn"
 	"osat/internal/vt"
 )
 
@@ -121,6 +122,17 @@ func (m *Manager) OpenMongoShell(req ConnectRequest) (SessionInfo, error) {
 		ln, err := portfwd.ListenSOCKS(0, sshDialAddr(client))
 		if err != nil {
 			undo()
+			return SessionInfo{}, err
+		}
+		cleanup = append(cleanup, ln.Close)
+		u = u.WithOption("proxyHost", "127.0.0.1").WithOption("proxyPort", strconv.Itoa(ln.Port()))
+	} else if vpn.Enabled() {
+		// mongosh se conecta solo, sin pasar por osat: con la VPN activada usa
+		// un proxy SOCKS local que osat lleva por el túnel.
+		ln, err := portfwd.ListenSOCKS(0, func(ctx context.Context, addr string) (net.Conn, error) {
+			return vpn.Dial(ctx, "tcp", addr)
+		})
+		if err != nil {
 			return SessionInfo{}, err
 		}
 		cleanup = append(cleanup, ln.Close)

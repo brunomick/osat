@@ -26,6 +26,7 @@ import (
 	"github.com/gorilla/websocket"
 
 	"osat/internal/i18n"
+	"osat/internal/vpn"
 )
 
 // Variables (no const) para poder acortarlas en los tests.
@@ -76,7 +77,7 @@ func (p *Proxy) open(host string, port int, via Via) (Ticket, error) {
 	var err error
 	if via != nil {
 		conn, err = dialVia(via, addr)
-	} else if conn, err = net.DialTimeout("tcp", addr, dialTimeout); err != nil {
+	} else if conn, err = vpn.DialTimeout("tcp", addr, dialTimeout); err != nil {
 		err = friendlyDial(err)
 	}
 	if err != nil {

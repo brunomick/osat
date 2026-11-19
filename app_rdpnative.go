@@ -1,29 +1,30 @@
 package main
 
 import (
+	"context"
 	"io"
 	"log/slog"
 	"net"
 	"strconv"
 	"sync"
-
-	"golang.org/x/crypto/ssh"
+	"time"
 
 	"osat/internal/browser"
 	"osat/internal/rdpwin"
 	"osat/internal/remote"
 	"osat/internal/store"
+	"osat/internal/vpn"
 )
 
 // ---------- Escritorio remoto con el cliente de Windows (internal/rdpwin) ----------
 //
 // En Windows el escritorio remoto lo muestra el control de mstsc en una ventana hija sobre la
 // pestaña (como los sitios web); en Linux y macOS sigue IronRDP (RdpOpen). El RD Gateway lo
-// maneja el propio control; un salto SSH (Proxy Jump) se hace con un puerto local que osat
-// reenvía por el salto.
+// maneja el propio control; un salto SSH (Proxy Jump) o la VPN de osat se hacen con un puerto
+// local que osat reenvía por el salto o por el túnel.
 
 // rdpNativeState: el motor (se crea con el primer escritorio y no se destruye) y los
-// reenvíos por salto SSH de cada pestaña.
+// reenvíos (salto SSH o VPN) de cada pestaña.
 type rdpNativeState struct {
 	mu    sync.Mutex
 	eng   rdpwin.Engine
@@ -85,25 +86,34 @@ func (a *App) RdpNativeOpen(req RdpNativeRequest) error {
 		if port != 443 {
 			cfg.Gateway = net.JoinHostPort(host, strconv.Itoa(port))
 		}
+		// Con un RD Gateway el control habla HTTPS con el gateway por su cuenta y
+		// no se lo puede mandar por un puerto local (no le coincidiría el
+		// certificado): esas conexiones no salen por la VPN de osat.
 	case c.JumpID != "":
-		client, err := a.mgr.DialJump(c, req.JumpSecrets)
+		client, err := a.mgr.DialJump(c, req.JumpSecrets) // el salto ya sale por la VPN, si está activada
 		if err != nil {
 			return err
 		}
-		fw, err := forwardThrough(client, net.JoinHostPort(c.Host, strconv.Itoa(c.Port)))
+		fw, err := forwardThrough(func(ctx context.Context, network, addr string) (net.Conn, error) {
+			return client.DialContext(ctx, network, addr)
+		}, func() { client.Close() }, net.JoinHostPort(c.Host, strconv.Itoa(c.Port)))
 		if err != nil {
 			client.Close()
 			return err
 		}
-		a.rdpNative.mu.Lock()
-		if a.rdpNative.jumps == nil {
-			a.rdpNative.jumps = map[string]*jumpForward{}
+		a.setNativeForward(req.TabID, fw)
+		cfg.Server, cfg.Port = "127.0.0.1", fw.port
+	case vpn.Enabled():
+		// El control se conecta solo, sin pasar por osat: con la VPN activada
+		// se conecta a un puerto local que osat lleva por el túnel.
+		fw, err := forwardThrough(vpn.Dial, nil, net.JoinHostPort(c.Host, strconv.Itoa(c.Port)))
+		if err != nil {
+			return err
 		}
-		a.rdpNative.jumps[req.TabID] = fw
-		a.rdpNative.mu.Unlock()
+		a.setNativeForward(req.TabID, fw)
 		cfg.Server, cfg.Port = "127.0.0.1", fw.port
 	}
-	slog.Info("escritorio remoto: abriendo con el cliente de Windows", "conn", c.Name, "host", c.Host, "port", c.Port, "gateway", c.Gateway != "", "jump", c.JumpID != "")
+	slog.Info("escritorio remoto: abriendo con el cliente de Windows", "conn", c.Name, "host", c.Host, "port", c.Port, "gateway", c.Gateway != "", "jump", c.JumpID != "", "vpn", c.Gateway == "" && c.JumpID == "" && vpn.Enabled())
 	if err := eng.Open(req.TabID, cfg, req.Bounds, req.Scale); err != nil {
 		a.closeJump(req.TabID)
 		remote.LogError("escritorio remoto: no se pudo abrir", err, "conn", c.Name)
@@ -176,19 +186,29 @@ func (a *App) closeRdpNative() {
 	}
 }
 
-// jumpForward es un puerto local (127.0.0.1) que lleva cada conexión al equipo por un salto SSH.
-type jumpForward struct {
-	ln     net.Listener
-	client *ssh.Client
-	port   int
+func (a *App) setNativeForward(tabID string, fw *jumpForward) {
+	a.rdpNative.mu.Lock()
+	if a.rdpNative.jumps == nil {
+		a.rdpNative.jumps = map[string]*jumpForward{}
+	}
+	a.rdpNative.jumps[tabID] = fw
+	a.rdpNative.mu.Unlock()
 }
 
-func forwardThrough(client *ssh.Client, target string) (*jumpForward, error) {
+// jumpForward es un puerto local (127.0.0.1) que lleva cada conexión al equipo
+// por otro camino: un salto SSH o la VPN de osat.
+type jumpForward struct {
+	ln      net.Listener
+	release func() // lo que se cierra con el reenvío (el cliente del salto); puede ser nil
+	port    int
+}
+
+func forwardThrough(dial func(ctx context.Context, network, addr string) (net.Conn, error), release func(), target string) (*jumpForward, error) {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		return nil, err
 	}
-	fw := &jumpForward{ln: ln, client: client, port: ln.Addr().(*net.TCPAddr).Port}
+	fw := &jumpForward{ln: ln, release: release, port: ln.Addr().(*net.TCPAddr).Port}
 	go func() {
 		for {
 			local, err := ln.Accept()
@@ -197,9 +217,11 @@ func forwardThrough(client *ssh.Client, target string) (*jumpForward, error) {
 			}
 			go func() {
 				defer local.Close()
-				remoteConn, err := client.Dial("tcp", target)
+				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+				remoteConn, err := dial(ctx, "tcp", target)
+				cancel()
 				if err != nil {
-					slog.Warn("escritorio remoto: el salto no llegó al equipo", "target", target, "err", err)
+					slog.Warn("escritorio remoto: no se llegó al equipo", "target", target, "err", err)
 					return
 				}
 				defer remoteConn.Close()
@@ -216,5 +238,7 @@ func forwardThrough(client *ssh.Client, target string) (*jumpForward, error) {
 
 func (f *jumpForward) Close() {
 	f.ln.Close()
-	f.client.Close()
+	if f.release != nil {
+		f.release()
+	}
 }

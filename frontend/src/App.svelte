@@ -40,6 +40,7 @@
   import { startSession } from './lib/workspaces'
   import { startIdleTimer } from './lib/idle'
   import { lockNow, lockState, locked, refreshLock, untilUnlocked } from './lib/lock'
+  import { refreshVpn } from './lib/vpn'
   import { isAndroid, keys, platform } from './lib/platform'
   import { backFrom, mobileScreen } from './lib/mobile'
   import MobileHome from './components/mobile/MobileHome.svelte'
@@ -170,6 +171,7 @@
       (e) => (toast(String(e), 'error'), false),
     )
     loadBridge().catch(() => {})
+    refreshVpn()
     api.browserSupported().then((v) => browserSupported.set(v), () => {})
     reloadSites().catch(() => {}) // la barra lateral los muestra aunque no se haya abierto ningún sitio
     const cfg = loadSettings().catch((e) => toast(tr('app.settingsError', { error: errorText(e) }), 'error'))
