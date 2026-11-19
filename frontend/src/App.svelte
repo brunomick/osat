@@ -6,6 +6,7 @@
   import SftpView from './components/SftpView.svelte'
   import EditorView from './components/EditorView.svelte'
   import RdpView from './components/RdpView.svelte'
+  import RdpNativeView from './components/RdpNativeView.svelte'
   import VncView from './components/VncView.svelte'
   import RepoView from './components/RepoView.svelte'
   import BrowserView from './components/BrowserView.svelte'
@@ -39,7 +40,7 @@
   import { startSession } from './lib/workspaces'
   import { startIdleTimer } from './lib/idle'
   import { lockNow, lockState, locked, refreshLock, untilUnlocked } from './lib/lock'
-  import { isAndroid, keys } from './lib/platform'
+  import { isAndroid, keys, platform } from './lib/platform'
   import { backFrom, mobileScreen } from './lib/mobile'
   import MobileHome from './components/mobile/MobileHome.svelte'
   import MobileSessions from './components/mobile/MobileSessions.svelte'
@@ -74,6 +75,16 @@
     toast,
     type Tab,
   } from './lib/stores'
+
+  // Escritorio remoto: con el cliente de Escritorio remoto de Windows (opción "Usar el cliente RDP del
+  // sistema", solo en Windows) o con IronRDP. Cada pestaña se queda con el que le tocó al abrirse:
+  // cambiar la opción vale para las que se abran después.
+  const systemRdpAvailable = platform === 'windows' && !isAndroid()
+  const systemRdpTabs = new Map<string, boolean>()
+  function usesSystemRdp(id: string, enabled: boolean): boolean {
+    if (!systemRdpTabs.has(id)) systemRdpTabs.set(id, systemRdpAvailable && enabled)
+    return systemRdpTabs.get(id)!
+  }
 
   // El ancho de la barra lateral se recuerda entre aperturas.
   const SIDEBAR_W_KEY = 'osat.sidebarWidth'
@@ -371,7 +382,11 @@
             {:else if tab.kind === 'terminal'}
               <TerminalView {tab} active={!!place?.visible} focused={!!place?.focused} />
             {:else if tab.kind === 'rdp'}
-              <RdpView {tab} active={!!place?.visible} />
+              {#if usesSystemRdp(tab.id, $settings.general.rdpSystemClient)}
+                <RdpNativeView {tab} active={!!place?.visible} />
+              {:else}
+                <RdpView {tab} active={!!place?.visible} />
+              {/if}
             {:else if tab.kind === 'vnc'}
               <VncView {tab} />
             {:else if tab.kind === 'local'}

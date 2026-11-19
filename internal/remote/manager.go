@@ -161,7 +161,8 @@ type Session struct {
 	noShell atomic.Bool // el servidor no deja ejecutar comandos (ver Copy)
 
 	capsMu sync.Mutex
-	caps   *findCaps // qué hay en el servidor para buscar archivos, una vez por sesión (ver search.go)
+	caps   *findCaps  // qué hay en el servidor para buscar archivos, una vez por sesión (ver search.go)
+	stats  statsState // última muestra de recursos del servidor (ver stats.go)
 
 	ready     chan struct{} // se cierra cuando el frontend ya escucha eventos
 	readyOnce sync.Once

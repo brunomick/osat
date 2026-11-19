@@ -152,6 +152,10 @@ export interface Settings {
     autoUpdate: boolean
     /** Ofrecer también las versiones beta (pre-releases), no solo las estables. */
     betaUpdates: boolean
+    /** Mostrar CPU, memoria, disco y red arriba de las terminales SSH a Linux. */
+    serverStats: boolean
+    /** Escritorio remoto con el cliente de Escritorio remoto de Windows; apagado (o fuera de Windows), con IronRDP. */
+    rdpSystemClient: boolean
   }
 }
 
@@ -243,6 +247,18 @@ export interface BrowserBounds {
 }
 
 /** Evento "browser:event" de la vista nativa de un sitio. Todos traen el estado actual; kind dice qué cambió. */
+/** Evento del escritorio remoto con el cliente de Windows ("rdp:native", internal/rdpwin). */
+export interface RdpNativeEvent {
+  id: string
+  kind: 'connected' | 'loginComplete' | 'disconnected' | 'filesCopied' | 'filesError'
+  /** Motivo de desconexión de Windows (1 a 3: cierre normal). */
+  reason: number
+  /** Su descripción, en el idioma de Windows (o el error al copiar archivos soltados). */
+  text: string
+  /** filesCopied: cuántos archivos soltados quedaron en el portapapeles, para pegarlos allá con Ctrl+V. */
+  files?: number
+}
+
 export interface BrowserEvent {
   id: string
   kind: 'nav' | 'title' | 'newWindow' | 'error'
@@ -310,6 +326,20 @@ export interface ConnectRequest {
   noPrompt?: boolean
   /** La terminal reconecta sobre lo que ya hay en pantalla: el arranque limpio no la borra. */
   reconnect?: boolean
+}
+
+/** Recursos del servidor de una terminal SSH a Linux (ver internal/remote/stats.go). */
+export interface SessionStats {
+  /** false en terminales locales, mongosh o servidores que no son Linux. */
+  supported: boolean
+  /** null en la primera muestra: todavía no hay dos lecturas para calcular el porcentaje. */
+  cpuPercent?: number | null
+  memUsed: number
+  memTotal: number
+  diskUsed: number
+  diskTotal: number
+  netRxBps: number
+  netTxBps: number
 }
 
 export interface SessionInfo {
@@ -680,6 +710,8 @@ export const api = {
   termAttach: (id: string): Promise<void> => app().TermAttach(id),
   termWrite: (id: string, data: string): Promise<void> => app().TermWrite(id, data),
   termResize: (id: string, cols: number, rows: number): Promise<void> => app().TermResize(id, cols, rows),
+  /** CPU, memoria, disco y red del servidor de una terminal SSH a Linux. */
+  sessionStats: (id: string): Promise<SessionStats> => app().SessionStats(id),
 
   sftpList: (id: string, dir: string): Promise<Listing> => app().SftpList(id, dir),
   sftpMkdir: (id: string, p: string): Promise<void> => app().SftpMkdir(id, p),
@@ -716,6 +748,21 @@ export const api = {
   rdpTrustCert: (hostPort: string, fingerprint: string): Promise<void> => app().RdpTrustCert(hostPort, fingerprint),
   rdpSaveSecret: (connectionId: string, secret: string): Promise<void> => app().RdpSaveSecret(connectionId, secret),
   rdpClose: (id: string): Promise<void> => app().RdpClose(id),
+  /** Escritorio remoto con el cliente de Windows (solo Windows). id = id de la pestaña; los eventos llegan como "rdp:native". */
+  rdpNativeOpen: (r: {
+    tabId: string
+    connectionId: string
+    secret: string
+    jumpSecrets?: Record<string, { secret: string; save: boolean }>
+    bounds: BrowserBounds
+    scale: number
+  }): Promise<void> => app().RdpNativeOpen(r),
+  rdpNativeSetBounds: (id: string, b: BrowserBounds, scale: number): Promise<void> => app().RdpNativeSetBounds(id, b, scale),
+  rdpNativeSetVisible: (id: string, visible: boolean): Promise<void> => app().RdpNativeSetVisible(id, visible),
+  rdpNativeFocus: (id: string): Promise<void> => app().RdpNativeFocus(id),
+  /** Aviso encima del escritorio remoto (los toasts quedarían tapados por la ventana nativa). */
+  rdpNativeNotice: (id: string, text: string): Promise<void> => app().RdpNativeNotice(id, text),
+  rdpNativeClose: (id: string): Promise<void> => app().RdpNativeClose(id),
   vncOpen: (r: { connectionId: string; secret: string; jumpSecrets?: Record<string, { secret: string; save: boolean }> }): Promise<VncSession> =>
     app().VncOpen(r),
   vncSaveSecret: (connectionId: string, secret: string): Promise<void> => app().VncSaveSecret(connectionId, secret),

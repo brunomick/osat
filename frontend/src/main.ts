@@ -34,7 +34,14 @@ function reportError(message: string, stack?: string) {
 window.addEventListener('error', (e) => reportError(e.message, e.error?.stack))
 window.addEventListener('unhandledrejection', (e) => {
   const r = e.reason
-  reportError(r instanceof Error ? r.message : String(r), r instanceof Error ? r.stack : undefined)
+  // Los errores de IronRDP (escritorio remoto) no son Error: traen backtrace().
+  let iron = ''
+  try {
+    if (typeof r?.backtrace === 'function') iron = String(r.backtrace())
+  } catch {
+    // ya liberado
+  }
+  reportError(r instanceof Error ? r.message : iron || String(r), r instanceof Error ? r.stack : undefined)
 })
 
 // La pantalla de inicio de index.html: cuando termina de armar "OSAT" (la app

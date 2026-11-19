@@ -50,6 +50,8 @@ type App struct {
 	browser browser.Engine // navegador nativo de los sitios web (app_sites.go); nil si nunca se creó
 	bstate  browserState
 
+	rdpNative rdpNativeState // escritorio remoto con el cliente de Windows (app_rdpnative.go)
+
 	bridge *bridgeState // puente con Claude Code (bridge.go)
 	osat   osatPending  // .osat abierto para importar (export.go)
 	feLog  frontendLog  // errores de JavaScript que llegan al log (frontendlog.go)
@@ -104,6 +106,7 @@ func (a *App) startup(ctx context.Context) { a.ctx = ctx }
 func (a *App) shutdown(ctx context.Context) {
 	a.bridge.srv.Stop()
 	a.closeBrowser()
+	a.closeRdpNative()
 	a.mgr.CloseAll()
 	a.rdp.CloseAll()
 	a.vnc.CloseAll()
@@ -387,7 +390,7 @@ func (a *App) PickImportFile(source string) (string, error) {
 
 // TrustHostKey acepta para host la clave con la huella que se le mostró al usuario.
 func (a *App) TrustHostKey(host, fingerprint string) error { return a.hk.Trust(host, fingerprint) }
-func (a *App) ForgetHostKey(host string) error { return a.hk.Forget(host) }
+func (a *App) ForgetHostKey(host string) error             { return a.hk.Forget(host) }
 
 // AnswerAuthPrompt responde una pregunta keyboard-interactive (nil = cancelar).
 func (a *App) AnswerAuthPrompt(id string, answers []string) { a.mgr.AnswerPrompt(id, answers) }
@@ -427,6 +430,10 @@ func (a *App) CloseSession(id string)                     { a.mgr.Close(id) }
 func (a *App) TermAttach(id string) error                 { return a.mgr.Attach(id) }
 func (a *App) TermWrite(id, data string) error            { return a.mgr.Write(id, data) }
 func (a *App) TermResize(id string, cols, rows int) error { return a.mgr.Resize(id, cols, rows) }
+
+// SessionStats devuelve CPU, memoria, disco y red del servidor de una terminal
+// SSH a Linux (ver internal/remote/stats.go).
+func (a *App) SessionStats(id string) (remote.SessionStats, error) { return a.mgr.SessionStats(id) }
 
 // ---------- SFTP ----------
 
@@ -776,20 +783,9 @@ type RdpSession struct {
 // RdpOpen verifica el servidor (RDP sobre TLS, certificado de confianza) y
 // prepara el proxy para una sesión.
 func (a *App) RdpOpen(req RdpOpenRequest) (RdpSession, error) {
-	c, ok := a.store.Get(req.ConnectionID)
-	if !ok {
-		return RdpSession{}, i18n.Err("app.connectionDoesNotExist")
-	}
-	if c.Protocol != store.ProtoRDP {
-		return RdpSession{}, i18n.Err("app.theConnectionIsNotA")
-	}
-	c = a.store.WithDefaults(c)
-	secret := req.Secret
-	if secret == "" {
-		secret = a.store.SecretFor(c)
-	}
-	if secret == "" {
-		return RdpSession{}, remote.NewError(remote.CodeNeedSecret, "Ingresá la contraseña.", map[string]string{"kind": "password"})
+	c, secret, err := a.rdpConnection(req.ConnectionID, req.Secret)
+	if err != nil {
+		return RdpSession{}, err
 	}
 	addr := fmt.Sprintf("%s@%s:%d", c.User, c.Host, c.Port)
 	slog.Debug("escritorio remoto: abriendo", "conn", c.Name, "addr", addr)
@@ -816,6 +812,26 @@ func (a *App) RdpOpen(req RdpOpenRequest) (RdpSession, error) {
 	}
 	slog.Info("escritorio remoto: abierto", "conn", c.Name, "addr", addr, "id", t.ID)
 	return RdpSession{Ticket: t, User: c.User, Domain: c.Domain, Password: secret}, nil
+}
+
+// rdpConnection busca la conexión RDP (con los valores por defecto aplicados) y su
+// contraseña: la que se tipeó (secret) o la guardada. Sin ninguna, pide que se ingrese.
+func (a *App) rdpConnection(id, secret string) (store.Connection, string, error) {
+	c, ok := a.store.Get(id)
+	if !ok {
+		return c, "", i18n.Err("app.connectionDoesNotExist")
+	}
+	if c.Protocol != store.ProtoRDP {
+		return c, "", i18n.Err("app.theConnectionIsNotA")
+	}
+	c = a.store.WithDefaults(c)
+	if secret == "" {
+		secret = a.store.SecretFor(c)
+	}
+	if secret == "" {
+		return c, "", remote.NewError(remote.CodeNeedSecret, "Ingresá la contraseña.", map[string]string{"kind": "password"})
+	}
+	return c, secret, nil
 }
 
 // gatewayWait: cuánto se espera la autorización del RD Gateway, que puede

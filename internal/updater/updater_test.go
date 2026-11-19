@@ -289,14 +289,14 @@ func TestWritableDir(t *testing.T) {
 func TestSecureURL(t *testing.T) {
 	for u, want := range map[string]bool{
 		"https://github.com/brunomick/osat/releases/download/v1/osat.zip": true,
-		"http://127.0.0.1:8080/x":                                         true,
-		"http://localhost/x":                                              true,
-		"http://[::1]:9/x":                                                true,
-		"http://github.com/x":                                             false,
-		"http://127.0.0.1.evil.test/x":                                    false,
-		"ftp://github.com/x":                                              false,
-		"file:///etc/passwd":                                              false,
-		"":                                                                false,
+		"http://127.0.0.1:8080/x":      true,
+		"http://localhost/x":           true,
+		"http://[::1]:9/x":             true,
+		"http://github.com/x":          false,
+		"http://127.0.0.1.evil.test/x": false,
+		"ftp://github.com/x":           false,
+		"file:///etc/passwd":           false,
+		"":                             false,
 	} {
 		if got := secureURL(u); got != want {
 			t.Errorf("secureURL(%q) = %v; quería %v", u, got, want)

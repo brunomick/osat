@@ -22,7 +22,7 @@ func TestDefaults(t *testing.T) {
 			TermType: "xterm-256color", LogDir: filepath.Join(home, "Documents", "osat-logs"),
 		},
 		Files:   Files{AskDownloadDir: true, DownloadDir: filepath.Join(home, "Downloads"), OnConflict: "ask"},
-		General: General{DefaultShell: "", VerboseLog: false, RestoreSession: true, Appearance: "dark", Language: "system", LockUseHello: true, WebBrowser: true, AutoUpdate: true},
+		General: General{DefaultShell: "", VerboseLog: false, RestoreSession: true, Appearance: "dark", Language: "system", LockUseHello: true, WebBrowser: true, AutoUpdate: true, ServerStats: true, RdpSystemClient: true},
 	}
 	if d != want {
 		t.Fatalf("Defaults() = %+v\nquería    %+v", d, want)
@@ -154,6 +154,44 @@ func TestDefaultsAutoUpdateOn(t *testing.T) {
 	s, err = Load(dir)
 	if err != nil || s.General.AutoUpdate {
 		t.Fatalf("apagado explícito: AutoUpdate=%v, %v", s.General.AutoUpdate, err)
+	}
+}
+
+// Los recursos del servidor vienen activados, también con un settings.json anterior
+// que no tiene el campo, y apagarlos se respeta.
+func TestDefaultsServerStatsOn(t *testing.T) {
+	if !Defaults().General.ServerStats {
+		t.Fatal("los recursos del servidor tienen que venir activados")
+	}
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "settings.json"), []byte(`{"general":{"restoreSession":false}}`), 0o600)
+	s, err := Load(dir)
+	if err != nil || !s.General.ServerStats {
+		t.Fatalf("un settings.json viejo cargó ServerStats=%v, %v", s.General.ServerStats, err)
+	}
+	os.WriteFile(filepath.Join(dir, "settings.json"), []byte(`{"general":{"serverStats":false}}`), 0o600)
+	s, err = Load(dir)
+	if err != nil || s.General.ServerStats {
+		t.Fatalf("apagado explícito: ServerStats=%v, %v", s.General.ServerStats, err)
+	}
+}
+
+// El cliente RDP del sistema viene activado, también al cargar un settings.json
+// que no tiene el campo, y apagarlo se respeta.
+func TestDefaultsRdpSystemClientOn(t *testing.T) {
+	if !Defaults().General.RdpSystemClient {
+		t.Fatal("el cliente RDP del sistema tiene que venir activado")
+	}
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "settings.json"), []byte(`{"general":{"restoreSession":false}}`), 0o600)
+	s, err := Load(dir)
+	if err != nil || !s.General.RdpSystemClient {
+		t.Fatalf("un settings.json viejo cargó RdpSystemClient=%v, %v", s.General.RdpSystemClient, err)
+	}
+	os.WriteFile(filepath.Join(dir, "settings.json"), []byte(`{"general":{"rdpSystemClient":false}}`), 0o600)
+	s, err = Load(dir)
+	if err != nil || s.General.RdpSystemClient {
+		t.Fatalf("apagado explícito: RdpSystemClient=%v, %v", s.General.RdpSystemClient, err)
 	}
 }
 

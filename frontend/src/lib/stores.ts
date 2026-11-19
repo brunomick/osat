@@ -5,6 +5,7 @@ import { locale, resolveLanguage, tr, type Locale } from './i18n'
 import { migrateDefaultShell } from './defaultshell'
 import { siteHost } from './siteUrl'
 import { activate, addTab, findPane, focusedPane, focusedTabs, layout, removeTab } from './layout'
+import { isAndroid, platform } from './platform'
 
 // ---------- Conexiones ----------
 
@@ -159,6 +160,7 @@ export async function closeTab(id: string) {
   }
   if (t.kind === 'browser') api.webClose(t.id).catch(() => {}) // los sitios locales que levantó
   if (t.kind === 'site') api.browserClose(t.id).catch(() => {}) // su vista nativa
+  if (t.kind === 'rdp' && platform === 'windows' && !isAndroid()) api.rdpNativeClose(t.id).catch(() => {}) // el cliente de Windows
   removeTab(id) // del layout (el panel muestra la vecina, o desaparece si queda vacío)
   tabs.update((ts) => ts.filter((x) => x.id !== id))
 }
@@ -281,6 +283,27 @@ sidebarOpen.subscribe((v) => {
   }
 })
 
+const RESOURCE_BAR_KEY = 'osat.resourceBarMinimized'
+
+/** La barra de recursos del servidor se puede plegar a un chip en la esquina;
+ * queda el botón para mostrarla de nuevo. Vale para todas las terminales. */
+export const resourceBarMinimized = writable<boolean>(
+  (() => {
+    try {
+      return localStorage.getItem(RESOURCE_BAR_KEY) === '1'
+    } catch {
+      return false
+    }
+  })(),
+)
+resourceBarMinimized.subscribe((v) => {
+  try {
+    localStorage.setItem(RESOURCE_BAR_KEY, v ? '1' : '0')
+  } catch {
+    // sin almacenamiento: vale hasta cerrar la app
+  }
+})
+
 /** Abre un archivo remoto en una pestaña de editor, o activa la que ya lo tiene.
  * text: contenido ya leído (el editor lo muestra sin volver a pedirlo).
  * sudo: como root; el mismo archivo puede estar abierto normal y como root en pestañas distintas. */
@@ -372,7 +395,7 @@ const fallbackSettings: Settings = {
     logDir: '',
   },
   files: { askDownloadDir: true, downloadDir: '', onConflict: 'ask' },
-  general: { defaultShell: '', verboseLog: false, restoreSession: true, appearance: 'dark', language: 'system', lockIdleMinutes: 0, lockUseHello: true, webBrowser: true, autoUpdate: true, betaUpdates: false },
+  general: { defaultShell: '', verboseLog: false, restoreSession: true, appearance: 'dark', language: 'system', lockIdleMinutes: 0, lockUseHello: true, webBrowser: true, autoUpdate: true, betaUpdates: false, serverStats: true, rdpSystemClient: true },
 }
 
 export const settings = writable<Settings>(fallbackSettings)

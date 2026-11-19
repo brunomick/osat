@@ -180,6 +180,11 @@ type General struct {
 	AutoUpdate bool `json:"autoUpdate"`
 	// Ofrecer también las versiones beta (pre-releases de GitHub), no solo las estables.
 	BetaUpdates bool `json:"betaUpdates"`
+	// Mostrar CPU, memoria, disco y red del servidor arriba de las terminales SSH a Linux.
+	ServerStats bool `json:"serverStats"`
+	// Escritorio remoto con el cliente del sistema (el de Escritorio remoto de Windows: portapapeles con
+	// archivos, Kerberos, audio). Apagado, o donde no lo hay (Linux, macOS), con IronRDP.
+	RdpSystemClient bool `json:"rdpSystemClient"`
 }
 
 // DefaultFont es la fuente de la terminal (la misma que --mono de app.css).
@@ -223,7 +228,7 @@ func Defaults() Settings {
 			DownloadDir:    dir,
 			OnConflict:     ConflictAsk,
 		},
-		General: General{RestoreSession: true, Appearance: AppearanceDark, Language: LanguageSystem, LockUseHello: true, WebBrowser: true, AutoUpdate: true},
+		General: General{RestoreSession: true, Appearance: AppearanceDark, Language: LanguageSystem, LockUseHello: true, WebBrowser: true, AutoUpdate: true, ServerStats: true, RdpSystemClient: true},
 	}
 }
 

@@ -331,7 +331,7 @@ var rules = map[string]rule{
 	"md5sum": nil, "sha1sum": nil, "sha256sum": nil, "sha512sum": nil, "cksum": nil,
 
 	// Red
-	"ss":      all(deny("-K", "--kill"), denyShort("K")),
+	"ss": all(deny("-K", "--kill"), denyShort("K")),
 	// Sin dig, host ni nslookup: una consulta DNS saca datos por el nombre (<datos>.atacante.com).
 	"netstat": nil,
 	"ip": all(firstOneOf("a", "addr", "address", "l", "link", "r", "route", "n", "neigh", "neighbor", "neighbour", "rule", "maddr"),

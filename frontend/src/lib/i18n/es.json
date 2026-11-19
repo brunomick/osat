@@ -84,6 +84,10 @@
     "verboseHelpWhere": "Acerca de → Abrir carpeta de logs",
     "restoreSession": "Restaurar la sesión al abrir osat",
     "restoreHelp": "Al abrir osat vuelven las pestañas, los paneles del mosaico y sus proporciones de la última vez.",
+    "serverStats": "Mostrar recursos del servidor",
+    "serverStatsHelp": "Solo en terminales SSH a servidores Linux: muestra CPU, memoria, disco y red en una barra arriba de la terminal, actualizada cada pocos segundos.",
+    "rdpSystemClient": "Usar el cliente RDP del sistema",
+    "rdpSystemClientHelp": "El escritorio remoto se abre con el cliente de Escritorio remoto de Windows: copiar y pegar archivos, Kerberos, audio y reconexión automática. Desactivado, usa el cliente propio de osat (IronRDP), que solo copia texto. Vale para los escritorios que se abran después.",
     "security": "Seguridad",
     "lockEnable": "Pedir contraseña para abrir osat",
     "lockPassword": "Contraseña",
@@ -528,7 +532,16 @@
     "regex": "Expresión regular",
     "prev": "Anterior (Shift+Enter)",
     "next": "Siguiente (Enter)",
-    "closeSearch": "Cerrar (Esc)"
+    "closeSearch": "Cerrar (Esc)",
+    "resourceTitle": "Recursos del servidor",
+    "resourceCpu": "CPU",
+    "resourceRam": "RAM",
+    "resourceDisk": "Disco",
+    "resourceNet": "Red",
+    "resourceNetDown": "Bajada",
+    "resourceNetUp": "Subida",
+    "resourceHide": "Ocultar la barra de recursos",
+    "resourceShow": "Mostrar la barra de recursos"
   },
   "snippets": {
     "loadError": "No se pudieron leer los snippets: {error}",
@@ -1046,6 +1059,11 @@
     "proxyUnreachable": "No se pudo conectar con el proxy local de osat.",
     "negotiation": "El servidor rechazó la negociación de seguridad: {detail}",
     "unknownError": "Error desconocido de escritorio remoto.",
+    "filesCopied": {
+      "one": "Archivo copiado: pegalo en el escritorio remoto con Ctrl+V.",
+      "other": "{count} archivos copiados: pegalos en el escritorio remoto con Ctrl+V."
+    },
+    "filesError": "No se pudieron copiar los archivos: {error}",
     "closed": "Sesión de escritorio remoto cerrada.",
     "certChangedMsg": "{text} Solo continuá si sabés que el certificado del servidor se renovó.",
     "failedAt": "Falló: {step}",

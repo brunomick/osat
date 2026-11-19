@@ -18,6 +18,7 @@
   import { closeTab, connections, handoffs, isMongoTab, LOCAL, patchTab, saveTextRequest, settings, snippetsRequest, tabs, toast, type Tab } from '../lib/stores'
   import ContextMenu, { type MenuItem } from './ContextMenu.svelte'
   import SnippetsPanel from './SnippetsPanel.svelte'
+  import ResourceBar from './ResourceBar.svelte'
 
   export let tab: Tab
   export let active: boolean
@@ -100,6 +101,8 @@
   $: if (term) term.options.theme = palette
   // Margen (ajuste Terminal.Padding): a la izquierda un poco más y abajo un poco menos; a la derecha queda la barra de scroll.
   $: pad = ((p) => `${p}px 4px ${Math.round(p * 0.6)}px ${p + 4}px`)($settings.terminal.padding)
+  // Recursos del servidor: solo SSH a Linux; las terminales locales, mongosh y las embebidas no tienen.
+  $: showStats = !embedded && tab.connId !== LOCAL && !isMongoTab(tab) && $settings.general.serverStats
 
   function cleanupSession() {
     unsubs.forEach((u) => u())
@@ -621,7 +624,11 @@
   })
 </script>
 
-<div class="wrap" role="presentation" style:padding={pad} style:background={palette.background} style:--thumb={palette.selectionInactiveBackground} style:--thumb-hover={palette.selectionBackground} class:bell={bellFlash} class:android class:broadcasting={!embedded && $broadcast.targets.includes(tab.id)} on:contextmenu={onContext}>
+<div class="shell">
+  {#if showStats}
+    <ResourceBar {sessionId} {active} />
+  {/if}
+  <div class="wrap" role="presentation" style:padding={pad} style:background={palette.background} style:--thumb={palette.selectionInactiveBackground} style:--thumb-hover={palette.selectionBackground} class:bell={bellFlash} class:android class:broadcasting={!embedded && $broadcast.targets.includes(tab.id)} on:contextmenu={onContext}>
   <div class="term" bind:this={host} />
   {#if searchOpen}
     <div class="search" role="presentation" on:contextmenu|stopPropagation>
@@ -667,9 +674,19 @@
       </div>
     </div>
   {/if}
+  </div>
 </div>
 
 <style>
+  /* La barra de recursos queda arriba del terminal y debajo de las pestañas. */
+  .shell {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
   .wrap {
     flex: 1;
     min-height: 0;

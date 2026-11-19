@@ -84,6 +84,10 @@
     "verboseHelpWhere": "About → Open logs folder",
     "restoreSession": "Restore the session when osat starts",
     "restoreHelp": "When osat starts, the tabs, tiled panes and their proportions from last time come back.",
+    "serverStats": "Show server resources",
+    "serverStatsHelp": "Only on SSH terminals to Linux servers: shows CPU, memory, disk and network in a bar above the terminal, updated every few seconds.",
+    "rdpSystemClient": "Use the system RDP client",
+    "rdpSystemClientHelp": "Remote desktops open with the Windows Remote Desktop client: copy and paste files, Kerberos, audio and automatic reconnection. When off, osat's own client (IronRDP) is used, which only copies text. Applies to remote desktops opened afterwards.",
     "security": "Security",
     "lockEnable": "Ask for a password to open osat",
     "lockPassword": "Password",
@@ -528,7 +532,16 @@
     "regex": "Regular expression",
     "prev": "Previous (Shift+Enter)",
     "next": "Next (Enter)",
-    "closeSearch": "Close (Esc)"
+    "closeSearch": "Close (Esc)",
+    "resourceTitle": "Server resources",
+    "resourceCpu": "CPU",
+    "resourceRam": "RAM",
+    "resourceDisk": "Disk",
+    "resourceNet": "Network",
+    "resourceNetDown": "Download",
+    "resourceNetUp": "Upload",
+    "resourceHide": "Hide the resource bar",
+    "resourceShow": "Show the resource bar"
   },
   "snippets": {
     "loadError": "Couldn't read the snippets: {error}",
@@ -1046,6 +1059,11 @@
     "proxyUnreachable": "Couldn't connect to osat's local proxy.",
     "negotiation": "The server rejected the security negotiation: {detail}",
     "unknownError": "Unknown remote desktop error.",
+    "filesCopied": {
+      "one": "File copied: paste it on the remote desktop with Ctrl+V.",
+      "other": "{count} files copied: paste them on the remote desktop with Ctrl+V."
+    },
+    "filesError": "Couldn't copy the files: {error}",
     "closed": "Remote desktop session closed.",
     "certChangedMsg": "{text} Only continue if you know the server certificate was renewed.",
     "failedAt": "Failed: {step}",

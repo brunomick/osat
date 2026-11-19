@@ -12,7 +12,7 @@
   import TermPreview from './TermPreview.svelte'
   import ClaudeSettings from './ClaudeSettings.svelte'
   import { version } from '../../package.json'
-  import { isAndroid } from '../lib/platform'
+  import { isAndroid, platform } from '../lib/platform'
   import { checkForUpdates } from '../lib/updates'
 
   export let tab: Tab
@@ -554,6 +554,18 @@
           <span>{$t('settings.restoreSession')}</span>
         </label>
         <p class="muted small">{$t('settings.restoreHelp')}</p>
+        <label class="row check">
+          <input type="checkbox" checked={$settings.general.serverStats} on:change={(e) => setGeneral({ serverStats: e.currentTarget.checked })} />
+          <span>{$t('settings.serverStats')}</span>
+        </label>
+        <p class="muted small">{$t('settings.serverStatsHelp')}</p>
+        {#if platform === 'windows' && !isAndroid()}
+          <label class="row check">
+            <input type="checkbox" checked={$settings.general.rdpSystemClient} on:change={(e) => setGeneral({ rdpSystemClient: e.currentTarget.checked })} />
+            <span>{$t('settings.rdpSystemClient')}</span>
+          </label>
+          <p class="muted small">{$t('settings.rdpSystemClientHelp')}</p>
+        {/if}
         {#if $browserSupported}
           <label class="row check">
             <input type="checkbox" checked={$settings.general.webBrowser} on:change={(e) => setWebBrowser(e.currentTarget.checked)} />
