@@ -611,19 +611,20 @@
     <button class="icon" title={$tl('sidebar.snippetsTip', { keys: keys('Ctrl+Shift+S') })} aria-label={$tl('sidebar.snippets')} on:click={openSnippets} on:contextmenu={snippetsMenu}>
       <Icon name="code" size={15} />
     </button>
-    <button
-      class="icon vpn {$vpn?.enabled ? $vpn.status.state : 'off'}"
-      title={!$vpn?.configured
-        ? $tl('sidebar.vpnNotConfigured')
-        : !$vpn.enabled
+    <!-- Solo con una VPN configurada (o activada): sin ninguna, se configura en Ajustes → VPN. -->
+    {#if $vpn?.configured || $vpn?.enabled}
+      <button
+        class="icon vpn {$vpn.enabled ? $vpn.status.state : 'off'}"
+        title={!$vpn.enabled
           ? $tl('sidebar.vpnOff')
           : $tl(`sidebar.vpn_${$vpn.status.state}`, { server: $vpn.status.server ?? '', address: $vpn.status.address ?? '', error: $vpn.status.error ?? '' })}
-      aria-label={$tl('sidebar.vpn')}
-      aria-pressed={!!$vpn?.enabled}
-      on:click={toggleVpn}
-    >
-      <Icon name="shield" size={15} filled={!!$vpn?.enabled && $vpn.status.state === 'on'} />
-    </button>
+        aria-label={$tl('sidebar.vpn')}
+        aria-pressed={!!$vpn.enabled}
+        on:click={toggleVpn}
+      >
+        <Icon name="shield" size={15} filled={!!$vpn.enabled && $vpn.status.state === 'on'} />
+      </button>
+    {/if}
     <button class="icon" title={$tl('sidebar.settingsTip', { keys: keys('Ctrl+,') })} aria-label={$tl('sidebar.settings')} on:click={() => openAppTab('settings')}>
       <Icon name="gear" size={15} />
     </button>

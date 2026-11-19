@@ -43,8 +43,9 @@ IronRDP (opción del cliente del sistema apagada) el gateway sí va por la VPN.
 ## Interfaz
 
 - Botón (escudo) en la cabecera del sidebar, entre snippets y ajustes: activa o
-  desactiva; sin VPN configurada abre Ajustes → VPN. Color según el estado:
-  verde activa, amarillo conectando, rojo si no contesta o no levantó.
+  desactiva. Solo aparece con una VPN configurada (sin ninguna, se configura en
+  Ajustes → VPN). Color según el estado: verde activa, amarillo conectando, rojo
+  si no contesta o no levantó.
 - Ajustes → VPN: pegar o importar el `.conf`, guardar, borrar y activar.
 
 ## Pendiente
