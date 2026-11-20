@@ -3,7 +3,6 @@
   import { api, fmtSize, type SessionStats } from '../lib/api'
   import { t } from '../lib/i18n'
   import { resourceBarMinimized } from '../lib/stores'
-  import Icon from '../lib/Icon.svelte'
 
   export let sessionId: string | null = null
   /** La pestaña está visible: solo entonces se consulta. */
@@ -87,7 +86,7 @@
   $: memLevel = level(memPct)
   $: diskLevel = level(diskPct)
 
-  // Resumen para el tooltip del chip plegado (y para lectores de pantalla).
+  // Resumen para el tooltip del botón plegado (y para lectores de pantalla).
   $: summary = stats
     ? [
         `${$t('term.resourceCpu')} ${cpu == null ? '—' : `${Math.round(cpu)}%`}`,
@@ -102,120 +101,122 @@
 
 {#if stats?.supported}
   {#if $resourceBarMinimized}
+    <!-- Plegada: un botón flotante abajo a la derecha, donde estaba la barra; un clic la muestra. -->
     <button class="mini" title={summary} aria-label={$t('term.resourceShow')} on:click={() => resourceBarMinimized.set(false)}>
-      <Icon name="eye" size={12} />
-      <span>{cpu == null ? '—' : `${Math.round(cpu)}%`}</span>
+      <span class:warn={cpuLevel === 'warn'} class:crit={cpuLevel === 'crit'}>
+        <span class="label">{$t('term.resourceCpu')}</span>
+        {cpu == null ? '—' : `${Math.round(cpu)}%`}
+      </span>
       {#if stats.memTotal > 0}
-        <span class="dim">·</span>
-        <span>{Math.round(memPct)}%</span>
+        <span class="sep">|</span>
+        <span class:warn={memLevel === 'warn'} class:crit={memLevel === 'crit'}>
+          <span class="label">{$t('term.resourceRam')}</span>
+          {Math.round(memPct)}%
+        </span>
       {/if}
     </button>
   {:else}
-    <button
-      type="button"
-      class="resbar"
-      aria-label={$t('term.resourceHide')}
-      title={$t('term.resourceHide')}
-      on:click={() => resourceBarMinimized.set(true)}
-    >
+    <!-- Barra de estado al pie de la terminal. Un clic en cualquier parte la pliega. -->
+    <button type="button" class="resbar" title={$t('term.resourceHide')} aria-label={`${$t('term.resourceHide')}: ${summary}`} on:click={() => resourceBarMinimized.set(true)}>
       <span class="item" class:warn={cpuLevel === 'warn'} class:crit={cpuLevel === 'crit'}>
         <span class="label">{$t('term.resourceCpu')}</span>
         <span class="val">{cpu == null ? '—' : `${Math.round(cpu)}%`}</span>
       </span>
       {#if stats.memTotal > 0}
+        <span class="sep">|</span>
         <span class="item" class:warn={memLevel === 'warn'} class:crit={memLevel === 'crit'}>
           <span class="label">{$t('term.resourceRam')}</span>
           <span class="val">{fmtSize(stats.memUsed)} / {fmtSize(stats.memTotal)}</span>
         </span>
       {/if}
       {#if stats.diskTotal > 0}
+        <span class="sep">|</span>
         <span class="item" class:warn={diskLevel === 'warn'} class:crit={diskLevel === 'crit'}>
           <span class="label">{$t('term.resourceDisk')}</span>
           <span class="val">{fmtSize(stats.diskUsed)} / {fmtSize(stats.diskTotal)}</span>
         </span>
       {/if}
-      <span class="item net">
-        <span class="label">{$t('term.resourceNet')}</span>
-        <span class="val" title={$t('term.resourceNetDown')}>↓ {fmtSize(stats.netRxBps)}/s</span>
-        <span class="val" title={$t('term.resourceNetUp')}>↑ {fmtSize(stats.netTxBps)}/s</span>
+      <span class="sep">|</span>
+      <span class="item">
+        <span class="label" title={$t('term.resourceNetDown')}>↓</span>
+        <span class="val">{fmtSize(stats.netRxBps)}/s</span>
+        <span class="label" title={$t('term.resourceNetUp')}>↑</span>
+        <span class="val">{fmtSize(stats.netTxBps)}/s</span>
       </span>
     </button>
   {/if}
 {/if}
 
 <style>
+  /* Barra de estado al pie, como la del panel de Repositorio: fondo de la barra de pestañas y un borde arriba. */
   .resbar {
     flex: none;
     display: flex;
     align-items: center;
-    gap: 14px;
-    height: 28px;
-    padding: 0 10px;
+    gap: 10px;
+    height: 24px;
+    padding: 0 12px;
     overflow: hidden;
-    background: var(--bg-2);
+    background: var(--rail);
     border: 0;
-    border-bottom: 1px solid var(--border);
-    color: var(--text-3);
-    font-size: 11px;
-    font-variant-numeric: tabular-nums;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
     white-space: nowrap;
     user-select: none;
     text-align: left;
-    cursor: pointer;
   }
   .resbar:hover {
     background: var(--bg-3);
   }
   .item {
     display: inline-flex;
-    align-items: baseline;
-    gap: 5px;
+    align-items: center;
+    gap: 6px;
     min-width: 0;
   }
-  .item + .item {
-    padding-left: 14px;
-    border-left: 1px solid var(--border);
-  }
+  /* Rótulos en gris tenue y valores un poco más claros, como las IPs de la barra lateral. */
   .label {
-    font-size: 10px;
     color: var(--text-3);
   }
   .val {
     color: var(--text-2);
+    font-variant-numeric: tabular-nums;
   }
-  .item.warn .val {
+  .sep {
+    color: var(--text-3);
+    opacity: 0.5;
+  }
+  /* Lo único con color: aviso (80%) y crítico (90%). */
+  .warn .val,
+  .mini .warn {
     color: var(--warning);
   }
-  .item.crit .val {
+  .crit .val,
+  .mini .crit {
     color: var(--danger);
   }
-  .net {
-    overflow: hidden;
-  }
-  /* Plegada: un chip discreto en la esquina; un clic la muestra de nuevo. */
+  /* Plegada: botón flotante abajo a la derecha (deja libre la barra de scroll). */
   .mini {
     position: absolute;
-    top: 6px;
+    bottom: 6px;
     right: 18px;
     z-index: 4;
     display: inline-flex;
     align-items: center;
-    gap: 5px;
-    height: 20px;
-    padding: 0 7px;
+    gap: 8px;
+    padding: 3px 8px;
     background: var(--rail);
     border: 1px solid var(--border);
-    color: var(--text-3);
-    font-size: 10px;
+    color: var(--text-2);
+    font-size: 12px;
     font-variant-numeric: tabular-nums;
-    opacity: 0.72;
+    user-select: none;
   }
   .mini:hover {
-    opacity: 1;
-    color: var(--text-2);
-    border-color: var(--text-3);
+    background: var(--bg-3);
+    color: var(--text);
   }
-  .dim {
-    opacity: 0.55;
+  .mini .label {
+    margin-right: 4px;
   }
 </style>

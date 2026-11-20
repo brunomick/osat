@@ -625,9 +625,6 @@
 </script>
 
 <div class="shell">
-  {#if showStats}
-    <ResourceBar {sessionId} {active} />
-  {/if}
   <div class="wrap" role="presentation" style:padding={pad} style:background={palette.background} style:--thumb={palette.selectionInactiveBackground} style:--thumb-hover={palette.selectionBackground} class:bell={bellFlash} class:android class:broadcasting={!embedded && $broadcast.targets.includes(tab.id)} on:contextmenu={onContext}>
   <div class="term" bind:this={host} />
   {#if searchOpen}
@@ -675,10 +672,13 @@
     </div>
   {/if}
   </div>
+  {#if showStats}
+    <ResourceBar {sessionId} {active} />
+  {/if}
 </div>
 
 <style>
-  /* La barra de recursos queda arriba del terminal y debajo de las pestañas. */
+  /* La barra de recursos queda abajo de la terminal, como una barra de estado. */
   .shell {
     flex: 1;
     min-width: 0;
