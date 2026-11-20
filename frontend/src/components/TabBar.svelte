@@ -15,9 +15,12 @@
     isServerPinned,
     kindIcon,
     LOCAL,
+    localTermDir,
     openLocal,
+    openPinnedDir,
     openPorts,
     openTab,
+    patchTab,
     pinnedDirs,
     snippetsRequest,
     saveTextRequest,
@@ -56,6 +59,33 @@ import { contextMenuAt, isMenuKey } from '../lib/treenav'
 
   const isLocalTerm = (t: Tab) => t.kind === 'terminal' && t.connId === LOCAL
 
+  // Renombrar una terminal (local o remota): el nombre va en `label` y tapa el título; vacío vuelve al original.
+  let renaming: string | null = null
+  let draft = ''
+
+  function startRename(t: Tab) {
+    if (t.kind !== 'terminal') return
+    draft = tabTitle(tr, t)
+    renaming = t.id
+  }
+
+  function endRename(save: boolean) {
+    if (!renaming) return
+    if (save) patchTab(renaming, { label: draft.trim() || undefined })
+    renaming = null
+  }
+
+  function renameKey(e: KeyboardEvent) {
+    e.stopPropagation()
+    if (e.key === 'Enter') endRename(true)
+    else if (e.key === 'Escape') endRename(false)
+  }
+
+  function focusSelect(el: HTMLInputElement) {
+    el.focus()
+    el.select()
+  }
+
   function duplicate(t: Tab, kind = t.kind) {
     if (t.kind === 'local') return openLocal(t.cwd)
     // Terminal de este equipo: otra igual (misma shell y carpeta de arranque), sin sesión que reutilizar.
@@ -85,10 +115,12 @@ import { contextMenuAt, isMenuKey } from '../lib/treenav'
         { label: tr('tabs.splitDown'), icon: 'splitDown', disabled: !canSplit, action: () => split(t, 'bottom') },
         { separator: true, label: '' },
         ...(single(t) ? [] : [{ label: tr('tabs.duplicate'), icon: 'copy', action: () => duplicate(t) }]),
+        ...(t.kind === 'terminal' ? [{ label: tr('tabs.rename'), icon: 'edit', hint: 'F2', action: () => startRename(t) }] : []),
         ...(t.kind === 'terminal'
           ? [{ label: 'Snippets…', icon: 'file', hint: keys('Ctrl+Shift+S'), action: () => (activeTabId.set(t.id), snippetsRequest.set(t.id)) }]
           : []),
         ...(t.kind === 'terminal' ? [{ label: 'Broadcast…', icon: 'terminal', hint: keys('Ctrl+Shift+M'), action: () => broadcastDialogOpen.set(true) }] : []),
+        ...(localTermDir(t) !== null ? [{ label: tr('tabs.browseHere'), icon: 'folder', action: () => openPinnedDir(localTermDir(t) ?? '') }] : []),
         ...(t.kind === 'terminal' ? [{ label: tr('term.saveText'), icon: 'download', action: () => saveTextRequest.set(t.id) }] : []),
         ...(t.kind === 'rdp' || t.kind === 'vnc' || t.kind === 'local' || t.kind === 'site' || t.connId === LOCAL || isAppTab(t) || isMongoTab(t)
           ? []
@@ -142,6 +174,10 @@ import { contextMenuAt, isMenuKey } from '../lib/treenav'
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault()
       return activeTabId.set(t.id)
+    }
+    if (e.key === 'F2') {
+      e.preventDefault()
+      return startRename(t)
     }
     const to = e.key === 'ArrowLeft' ? i - 1 : e.key === 'ArrowRight' ? i + 1 : e.key === 'Home' ? 0 : e.key === 'End' ? paneTabs.length - 1 : -1
     if (to < 0 || to >= paneTabs.length) return
@@ -209,10 +245,25 @@ import { contextMenuAt, isMenuKey } from '../lib/treenav'
       title={t.path ?? tabTitle($tl, t)}
       on:mousedown={(e) => down(e, t)}
       on:contextmenu={(e) => showMenu(e, t)}
+      on:dblclick={() => startRename(t)}
     >
       <span class="accent" style="background:{t.color || 'transparent'}" />
       <span class="kind"><Icon name={kindIcon[t.kind]} size={13} /></span>
-      <span class="title">{tabTitle($tl, t)}{t.dirty ? ' ●' : ''}</span>
+      {#if renaming === t.id}
+        <input
+          class="rename"
+          bind:value={draft}
+          title={$tl('tabs.renameTip')}
+          aria-label={$tl('tabs.rename')}
+          use:focusSelect
+          on:keydown={renameKey}
+          on:blur={() => endRename(true)}
+          on:mousedown|stopPropagation
+          on:dblclick|stopPropagation
+        />
+      {:else}
+        <span class="title">{tabTitle($tl, t)}{t.dirty ? ' ●' : ''}</span>
+      {/if}
       {#if t.sudo}<span class="root" title={$tl('tabs.rootTip')}>root</span>{/if}
       {#if t.kind === 'ports' && t.forwarding}
         <span class="live" title={$tl(t.forwarding === 1 ? 'tabs.forwards.one' : 'tabs.forwards.other', { count: t.forwarding })}>{t.forwarding}</span>
@@ -365,6 +416,17 @@ import { contextMenuAt, isMenuKey } from '../lib/treenav'
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+  .rename {
+    flex: 1;
+    min-width: 0;
+    padding: 1px 4px;
+    font: inherit;
+    color: var(--text);
+    background: var(--bg-2);
+    border: 1px solid var(--signal);
+    border-radius: 3px;
+    outline: none;
   }
   /* Puertos: cuántos reenvíos andan (verde). */
   .live {

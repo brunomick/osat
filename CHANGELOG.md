@@ -4,6 +4,22 @@ Todos los cambios importantes de osat se anotan acá.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
+## [1.1.3-beta.2] - 2026-11-14
+
+Versión beta: trae cambios que todavía se están probando.
+
+### Agregado
+
+- **Explorar la carpeta de una terminal de este equipo**: con clic derecho → Explorar esta carpeta, en la pestaña o en la barra lateral, se abre *Este equipo* en la carpeta donde está la terminal en ese momento (sigue los `cd`). Anda con PowerShell, cmd, Git Bash y WSL; en WSL, las carpetas de Linux se abren como `\\wsl.localhost\<distribución>\...`.
+
+## [1.1.3-beta.1] - 2026-11-14
+
+Versión beta: trae cambios que todavía se están probando.
+
+### Agregado
+
+- **Las terminales se pueden renombrar**, tanto las de este equipo como las de un servidor, para saber qué hay en cada una: con doble clic o F2 sobre la pestaña, o con clic derecho → Renombrar, en la pestaña o en la barra lateral. El nombre se ve en la pestaña y en la barra lateral, y se guarda con los espacios de trabajo. Si lo dejás vacío, vuelve el nombre original.
+
 ## [1.1.2] - 2026-11-13
 
 ### Corregido

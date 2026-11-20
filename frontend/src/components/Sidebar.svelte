@@ -29,6 +29,8 @@
     browserSupported,
     exportGroup,
     closeTab,
+    localTermDir,
+    patchTab,
     connections,
     defaultShell,
     groupPaths,
@@ -130,6 +132,7 @@
   const branch = (i: number, n: number) => (i === n - 1 ? '└─' : '├─')
 
   function tabLabel(t: Tab, list: Tab[], tf: typeof tr) {
+    if (t.label) return t.label // terminal renombrada
     if (t.kind === 'terminal' && t.connId === LOCAL) return t.title // PowerShell, cmd...
     if (t.kind === 'sftp' || t.kind === 'local') return t.cwd && t.cwd !== '::drives' ? t.cwd : t.kind === 'sftp' ? 'SFTP' : tabTitle(tf, t)
     if (t.kind === 'editor' || t.kind === 'repo') return (t.dirty ? '● ' : '') + t.title
@@ -163,6 +166,29 @@
         ...($pinNames[p] ? [{ label: tr('sidebar.useFolderName'), icon: 'refresh', action: () => renamePinnedDir(p, '') }] : []),
         { separator: true, label: '' },
         { label: tr('sidebar.unpin'), icon: 'x', danger: true, action: () => togglePinnedDir(p) },
+      ],
+    }
+  }
+
+  // Terminal abierta (local o remota): renombrarla, igual que desde su pestaña.
+  async function renameTerm(t: Tab, list: Tab[]) {
+    const name = await promptDialog({ title: tr('tabs.rename'), message: tr('tabs.renameTip'), value: tabLabel(t, list, tr), okText: tr('common.save') })
+    if (name !== null) patchTab(t.id, { label: name.trim() || undefined })
+  }
+
+  function termMenu(e: MouseEvent, t: Tab, list: Tab[]) {
+    if (t.kind !== 'terminal') return // las demás pestañas siguen con el menú de su servidor
+    e.preventDefault()
+    e.stopPropagation()
+    menu = {
+      x: e.clientX,
+      y: e.clientY,
+      items: [
+        { label: tr('tabs.rename'), icon: 'edit', action: () => renameTerm(t, list) },
+        ...(localTermDir(t) !== null ? [{ label: tr('tabs.browseHere'), icon: 'folder', action: () => openPinnedDir(localTermDir(t) ?? '') }] : []),
+        ...(t.label ? [{ label: tr('tabs.originalName'), icon: 'refresh', action: () => patchTab(t.id, { label: undefined }) }] : []),
+        { separator: true, label: '' },
+        { label: tr('common.close'), icon: 'x', action: () => closeTab(t.id) },
       ],
     }
   }
@@ -692,6 +718,7 @@
         data-drop-block
         on:click={() => activeTabId.set(t.id)}
         on:keydown={(e) => e.key === 'Enter' && activeTabId.set(t.id)}
+        on:contextmenu={(e) => termMenu(e, t, localTabs)}
       >
         <span class="branch">{branch($pinnedDirs.length + i, localKids)}</span>
         <Icon name={t.kind === 'editor' || t.kind === 'terminal' || t.kind === 'browser' ? kindIcon[t.kind] : 'folder'} size={12} />
@@ -912,6 +939,7 @@
             data-menu-conn={c.id}
             on:click={() => activeTabId.set(t.id)}
             on:keydown={(e) => e.key === 'Enter' && activeTabId.set(t.id)}
+            on:contextmenu={(e) => termMenu(e, t, list)}
           >
             <span class="guides">{#each Array(r.depth) as _}<span class="guide" />{/each}</span>
             <span class="branch">{branch(np + i, np + list.length)}</span>

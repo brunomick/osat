@@ -396,3 +396,14 @@ describe('sitios web', () => {
     expect(mountable([d('a'), d('b')], new Set(['a', 'b']), new Set())).toEqual([{ id: 'a' }, { id: 'b' }])
   })
 })
+
+describe('nombre propio de una terminal', () => {
+  it('se guarda y vuelve al abrir el espacio de trabajo', () => {
+    const ts = [tab('a', { label: 'logs prod' }), tab('b', { connId: 'local', title: 'PowerShell', shell: 'powershell', label: 'build' })]
+    const r = restore(roundTrip(snapshot(ts, pane('p', ['a', 'b']))), conns)!
+    expect(r.tabs.map((t) => [t.title, t.label])).toEqual([
+      ['a', 'logs prod'],
+      ['PowerShell', 'build'],
+    ])
+  })
+})

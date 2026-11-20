@@ -5,7 +5,8 @@ import type { tr } from './i18n'
 // (nombre del servidor, archivo) y el texto se arma al mostrarlo, así sigue al idioma elegido.
 
 /** El título para mostrar. `t` es el store `$t` del componente (o `tr` fuera de uno). */
-export function tabTitle(t: typeof tr, tab: { kind: TabKind; title: string }): string {
+export function tabTitle(t: typeof tr, tab: { kind: TabKind; title: string; label?: string }): string {
+  if (tab.label) return tab.label
   if (tab.kind === 'local') return t('tab.local')
   if (tab.kind === 'ports') return t('tab.ports', { name: tab.title })
   if (tab.kind === 'browser' && !tab.title) return t('tab.browser')

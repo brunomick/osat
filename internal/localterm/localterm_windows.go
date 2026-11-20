@@ -21,7 +21,7 @@ func detect() []Shell {
 	var out []Shell
 
 	if p, err := exec.LookPath("pwsh.exe"); err == nil {
-		out = append(out, Shell{ID: "pwsh", Name: "PowerShell 7", path: p, args: []string{"-NoLogo"}})
+		out = append(out, Shell{ID: "pwsh", Name: "PowerShell 7", path: p, args: psArgs()})
 	}
 	if p := filepath.Join(sys, "WindowsPowerShell", "v1.0", "powershell.exe"); exists(p) {
 		name := "PowerShell"
@@ -29,19 +29,19 @@ func detect() []Shell {
 			name = "Windows PowerShell" // ya hay un "PowerShell 7"
 		}
 		// Primera en la lista: es la predeterminada (DefaultID).
-		out = append([]Shell{{ID: "powershell", Name: name, path: p, args: []string{"-NoLogo"}}}, out...)
+		out = append([]Shell{{ID: "powershell", Name: name, path: p, args: psArgs()}}, out...)
 	}
 	if p := os.Getenv("ComSpec"); exists(p) {
-		out = append(out, Shell{ID: "cmd", Name: "cmd", path: p})
+		out = append(out, Shell{ID: "cmd", Name: "cmd", path: p, env: cmdEnv()})
 	} else if p := filepath.Join(sys, "cmd.exe"); exists(p) {
-		out = append(out, Shell{ID: "cmd", Name: "cmd", path: p})
+		out = append(out, Shell{ID: "cmd", Name: "cmd", path: p, env: cmdEnv()})
 	}
 	if p := filepath.Join(sys, "wsl.exe"); exists(p) {
-		out = append(out, Shell{ID: "wsl", Name: "WSL", path: p})
+		out = append(out, Shell{ID: "wsl", Name: "WSL", path: p, env: wslEnv()})
 	}
 	if p := gitBash(); p != "" {
 		// CHERE_INVOKING: que bash se quede en la carpeta en la que se abrió.
-		out = append(out, Shell{ID: "gitbash", Name: "Git Bash", path: p, args: []string{"--login", "-i"}, env: []string{"CHERE_INVOKING=1"}})
+		out = append(out, Shell{ID: "gitbash", Name: "Git Bash", path: p, args: []string{"--login", "-i"}, env: []string{"CHERE_INVOKING=1", "PROMPT_COMMAND=" + bashCwd}})
 	}
 	return out
 }
@@ -72,8 +72,10 @@ type proc struct {
 
 func start(sh Shell, dir string, cols, rows int) (Proc, error) {
 	cmdline := windows.ComposeCommandLine(append([]string{sh.path}, sh.args...))
-	env := append(os.Environ(), "TERM=xterm-256color")
-	env = append(env, sh.env...)
+	env := os.Environ()
+	for _, kv := range append([]string{"TERM=xterm-256color"}, sh.env...) {
+		env = setEnv(env, kv)
+	}
 	cp, err := conpty.Start(cmdline, conpty.ConPtyDimensions(cols, rows), conpty.ConPtyWorkDir(dir), conpty.ConPtyEnv(env))
 	if err != nil {
 		return nil, i18n.Err("remote.couldnTOpenSV", sh.Name, err)
