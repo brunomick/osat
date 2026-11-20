@@ -4,6 +4,34 @@ The important changes in osat, in English. Versions before 0.4.0 are only in the
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.1.4-beta.1] - 2026-11-19
+
+Beta version: it brings changes that are still being tested.
+
+### Added
+
+- **On Windows, remote desktops open with the Windows Remote Desktop client**, inside the tab: copy and paste files both ways, Kerberos, audio and automatic reconnection. You can go back to osat's own client with *Settings → General → Use the system RDP client*. To send files to the server you can also drop them on the desktop and paste them there with Ctrl+V.
+- **WireGuard VPN for osat only**: paste or import the `.conf` in *Settings → VPN* and turn it on with the shield button in the sidebar (it shows up once one is configured). With the VPN on, SSH, SFTP, remote desktop, VNC, MongoDB and updates go through it; the rest of the computer doesn't change. If the VPN doesn't connect, those connections fail instead of going outside it. With the Windows client, connections through an RD Gateway connect directly.
+- **MongoDB connections** with this computer's `mongosh`, directly or through an SSH jump, and shared with Claude like terminals.
+- **Import from MongoDB Compass** the connections saved on this PC, with their passwords.
+- **Paste in the file explorers what you copied outside osat**: in *This computer* and in SFTP, *Paste* takes the last thing you copied, in osat, in Explorer or in a remote desktop (the server's files are fetched only when you paste). It never overwrites anything: if the name is taken, it becomes "x - copia".
+- **Server resources** in SSH terminals to Linux: a bar at the bottom with CPU, RAM, disk and network, which folds away with a click. Turn it off in *Settings → General*.
+
+### Fixed
+
+- **The remote desktop no longer freezes osat** when the session closes because another user logged in or it timed out.
+- **Copying and pasting text with the remote desktop works both ways** with osat's own client too (it used to stop after switching windows).
+
+### Security
+
+- **Android**: the bridge with the app asks for a key only osat's page knows, and `/call` requires its own origin.
+- **SSH server fingerprints**: the key is accepted only if it matches the fingerprint you saw.
+- **Claude bridge**: the read-only filter rejects more ways around it (abbreviated options, globs, DNS lookups, `ps` with environment and `docker inspect`).
+- **Updates**: https only, and never to an older version.
+- **`.osat` files**: the password of at least 8 characters is also checked when opening them.
+- **Built-in browser**: sites reject requests coming from another origin.
+- **The log** also hides one-time codes, answers, credentials, cookies and API keys.
+
 ## [1.1.3-beta.2] - 2026-11-14
 
 Beta version: it brings changes that are still being tested.

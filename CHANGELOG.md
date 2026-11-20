@@ -4,6 +4,34 @@ Todos los cambios importantes de osat se anotan acá.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
+## [1.1.4-beta.1] - 2026-11-19
+
+Versión beta: trae cambios que todavía se están probando.
+
+### Agregado
+
+- **En Windows, el escritorio remoto se abre con el cliente de Escritorio remoto de Windows**, dentro de la pestaña: copiar y pegar archivos en los dos sentidos, Kerberos, audio y reconexión automática. Se puede volver al cliente propio de osat con *Ajustes → General → Usar el cliente RDP del sistema*. Para pasar archivos al servidor también se pueden soltar sobre el escritorio y pegarlos allá con Ctrl+V.
+- **VPN WireGuard solo para osat**: pegá o importá el `.conf` en *Ajustes → VPN* y activala con el botón del escudo de la barra lateral (aparece cuando hay una configurada). Con la VPN activa, SSH, SFTP, escritorio remoto, VNC, MongoDB y las actualizaciones salen por ella; el resto del equipo no cambia. Si la VPN no conecta, esas conexiones fallan en vez de salir por fuera. Con el cliente de Windows, las conexiones por RD Gateway se conectan directo.
+- **Conexiones a MongoDB** con el `mongosh` de este equipo, directo o por un salto SSH, y compartidas con Claude como las terminales.
+- **Importar de MongoDB Compass** las conexiones guardadas en esta PC, con sus contraseñas.
+- **Pegar en los exploradores lo copiado fuera de osat**: en *Este equipo* y en los SFTP, *Pegar* toma lo último que copiaste, en osat, en el Explorador o en un escritorio remoto (los archivos del servidor se traen recién al pegar). Nunca pisa nada: si el nombre ya está, queda como "x - copia".
+- **Recursos del servidor** en las terminales SSH a Linux: una barra al pie con CPU, RAM, disco y red, que se pliega con un clic. Se apaga en *Ajustes → General*.
+
+### Corregido
+
+- **El escritorio remoto ya no traba osat** cuando la sesión se cierra porque entró otro usuario o se venció el tiempo.
+- **Copiar y pegar texto con el escritorio remoto en los dos sentidos** también con el cliente propio de osat (antes se cortaba al cambiar de ventana).
+
+### Seguridad
+
+- **Android**: el puente con la app pide una clave que solo conoce la página de osat, y `/call` exige el origen propio.
+- **Huellas de servidores SSH**: se acepta la clave solo si es la de la huella que viste.
+- **Puente con Claude**: el filtro de solo lectura rechaza más formas de saltearlo (opciones abreviadas, comodines, consultas DNS, `ps` con entorno y `docker inspect`).
+- **Actualizaciones**: solo por https y nunca a una versión anterior.
+- **Archivos `.osat`**: la contraseña de al menos 8 caracteres también se controla al abrirlos.
+- **Navegador integrado**: los sitios rechazan pedidos que vienen de otro origen.
+- **El log** oculta también códigos de un solo uso, respuestas, credenciales, cookies y claves de API.
+
 ## [1.1.3-beta.2] - 2026-11-14
 
 Versión beta: trae cambios que todavía se están probando.
