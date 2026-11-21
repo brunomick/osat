@@ -4,6 +4,20 @@ The important changes in osat, in English. Versions before 0.4.0 are only in the
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.1.5-beta.1] - 2026-11-21
+
+Beta version: it brings changes that are still being tested.
+
+### Added
+
+- **Credentials for web sites**: the key in any site's bar opens a strip with your saved credentials. Pick one and copy the account (IAM, tenant, organization…), the user or the password with one click, without covering the page. You add, edit and delete them from the same strip. They're kept in the system credential store, not in osat's files; while osat is locked they can't be seen.
+- **A copied password is cleared from the clipboard after 30 seconds**, if it's still there.
+- **Export site credentials in the .osat**: *Include site credentials* is a separate option, unchecked by default. When importing, the ones whose label already exists aren't duplicated.
+
+### Fixed
+
+- **The star of a saved site** no longer shows it as "not saved" after you log in and the page changes its address.
+
 ## [1.1.4-beta.1] - 2026-11-19
 
 Beta version: it brings changes that are still being tested.

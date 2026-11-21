@@ -4,6 +4,20 @@ Todos los cambios importantes de osat se anotan acá.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
+## [1.1.5-beta.1] - 2026-11-21
+
+Versión beta: trae cambios que todavía se están probando.
+
+### Agregado
+
+- **Credenciales para los sitios web**: la llave de la barra de cualquier sitio abre una franja con tus credenciales guardadas. Elegís una y copiás la cuenta (IAM, tenant, organización…), el usuario o la contraseña con un clic, sin tapar la página. Desde la misma franja se agregan, editan y borran. Se guardan en el almacén de credenciales del sistema, no en los archivos de osat; con osat bloqueado no se pueden ver.
+- **La contraseña copiada se borra del portapapeles a los 30 segundos**, si todavía está ahí.
+- **Exportar las credenciales de los sitios en el .osat**: *Incluir las credenciales de los sitios* es una opción aparte, desmarcada de entrada. Al importar, las que tienen una etiqueta que ya existe no se duplican.
+
+### Corregido
+
+- **La estrella de un sitio guardado** ya no lo muestra como "no guardado" después de iniciar sesión, cuando la página cambia de dirección.
+
 ## [1.1.4-beta.1] - 2026-11-19
 
 Versión beta: trae cambios que todavía se están probando.
