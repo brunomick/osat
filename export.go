@@ -30,14 +30,16 @@ type osatPending struct {
 	entries  []osatfile.Entry
 	snippets []osatfile.SnippetEntry
 	sites    []osatfile.SiteEntry
+	creds    []osatfile.CredEntry
 	defaults *osatfile.DefaultsEntry
 }
 
 // ExportConnections pregunta dónde guardar y exporta las conexiones elegidas
 // (ids). withSecrets agrega las contraseñas y el contenido de las claves;
-// withSnippets y withSites, todos los snippets y sitios web; withDefaults, las
-// credenciales por defecto con su contraseña. Puede no haber conexiones si va algo más. Devuelve la ruta del archivo ("" = se canceló).
-func (a *App) ExportConnections(ids []string, password string, withSecrets, withSnippets, withSites, withDefaults bool) (string, error) {
+// withSnippets y withSites, todos los snippets y sitios web; withCreds, las credenciales para los sitios
+// (con sus datos); withDefaults, las credenciales por defecto con su contraseña. Puede no haber conexiones
+// si va algo más. Devuelve la ruta del archivo ("" = se canceló).
+func (a *App) ExportConnections(ids []string, password string, withSecrets, withSnippets, withSites, withCreds, withDefaults bool) (string, error) {
 	if password == "" {
 		return "", i18n.Err("app.thePasswordIsRequired")
 	}
@@ -58,11 +60,17 @@ func (a *App) ExportConnections(ids []string, password string, withSecrets, with
 	if withSites {
 		sites = a.exportSites()
 	}
+	var creds []osatfile.CredEntry
+	if withCreds {
+		if creds, err = a.exportCreds(); err != nil {
+			return "", err
+		}
+	}
 	var defaults *osatfile.DefaultsEntry
 	if d := a.store.Defaults(); withDefaults && (d.User != "" || d.HasSecret) {
 		defaults = &osatfile.DefaultsEntry{User: d.User, Domain: d.Domain, Secret: a.store.DefaultSecret()}
 	}
-	if len(entries)+len(snippets)+len(sites) == 0 && defaults == nil {
+	if len(entries)+len(snippets)+len(sites)+len(creds) == 0 && defaults == nil {
 		return "", i18n.Err("app.thereIsNothingToExport")
 	}
 	path, err := nativeSaveFileDialog(a.ctx, runtime.SaveDialogOptions{
@@ -76,7 +84,7 @@ func (a *App) ExportConnections(ids []string, password string, withSecrets, with
 	if filepath.Ext(path) == "" {
 		path += ".osat"
 	}
-	data, err := osatfile.Seal(entries, snippets, sites, defaults, password)
+	data, err := osatfile.Seal(entries, snippets, sites, creds, defaults, password)
 	if err != nil {
 		return "", err
 	}
@@ -141,14 +149,28 @@ func (a *App) exportSites() []osatfile.SiteEntry {
 	return out
 }
 
+// exportCreds arma las credenciales para los sitios con sus datos (del keyring). Si una no se puede
+// leer, no exporta: un archivo al que le falten credenciales sin avisar sería peor.
+func (a *App) exportCreds() ([]osatfile.CredEntry, error) {
+	var out []osatfile.CredEntry
+	for _, c := range a.store.Creds() {
+		d, err := a.store.CredData(c.ID)
+		if err != nil {
+			return nil, fmt.Errorf("«%s»: %w", c.Label, err)
+		}
+		out = append(out, osatfile.CredEntry{Label: c.Label, Account: d.Account, User: d.User, Password: d.Password})
+	}
+	return out, nil
+}
+
 // ImportOsatScan descifra un .osat y lista sus conexiones para elegir cuáles importar.
 func (a *App) ImportOsatScan(path, password string) (importer.Result, error) {
-	r, entries, snippets, sites, defaults, err := importer.ScanOsat(path, password, a.store.List())
+	r, entries, snippets, sites, creds, defaults, err := importer.ScanOsat(path, password, a.store.List())
 	if err != nil {
 		return importer.Result{}, err
 	}
 	a.osat.Lock()
-	a.osat.entries, a.osat.snippets, a.osat.sites, a.osat.defaults = entries, snippets, sites, defaults
+	a.osat.entries, a.osat.snippets, a.osat.sites, a.osat.creds, a.osat.defaults = entries, snippets, sites, creds, defaults
 	a.osat.Unlock()
 	return r, nil
 }
@@ -156,10 +178,11 @@ func (a *App) ImportOsatScan(path, password string) (importer.Result, error) {
 // ImportOsat da de alta las conexiones elegidas del último .osat abierto, con
 // sus contraseñas (al keyring de este equipo) y sus claves (a la carpeta keys
 // de la configuración de osat). También da de alta los snippets del archivo
-// y los sitios web (los que ya existen no se duplican). Devuelve cuántas conexiones se guardaron.
+// y los sitios web (los que ya existen no se duplican), y las credenciales para los sitios (al keyring; una
+// con una etiqueta que ya existe se saltea). Devuelve cuántas conexiones se guardaron.
 func (a *App) ImportOsat(items []importer.Item) (int, error) {
 	a.osat.Lock()
-	entries, snippets, sites := a.osat.entries, a.osat.snippets, a.osat.sites
+	entries, snippets, sites, creds := a.osat.entries, a.osat.snippets, a.osat.sites, a.osat.creds
 	a.osat.Unlock()
 	keyDir := filepath.Join(a.store.Dir(), "keys")
 	n := 0
@@ -207,6 +230,13 @@ func (a *App) ImportOsat(items []importer.Item) (int, error) {
 		importedSites[i] = store.Site{Name: st.Name, URL: st.URL}
 	}
 	if _, err := a.store.ImportSites(importedSites); err != nil {
+		errs = append(errs, err)
+	}
+	importedCreds := make([]store.CredInput, len(creds))
+	for i, c := range creds {
+		importedCreds[i] = store.CredInput{Label: c.Label, Account: c.Account, User: c.User, Password: c.Password}
+	}
+	if _, err := a.store.ImportCreds(importedCreds); err != nil {
 		errs = append(errs, err)
 	}
 	return n, errors.Join(errs...)

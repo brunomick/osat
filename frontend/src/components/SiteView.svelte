@@ -5,8 +5,10 @@
   import { api, errorText, on, type BrowserBounds, type BrowserEvent } from '../lib/api'
   import { layout, paneRects } from '../lib/layout'
   import { overlayOpen } from '../lib/overlay'
-  import { normalizeSiteUrl, sameSiteUrl, siteHost } from '../lib/siteUrl'
+  import { siteForTab } from '../lib/sites'
+  import { normalizeSiteUrl, siteHost } from '../lib/siteUrl'
   import { openBlankSite, openSite, patchTab, reloadSites, sites, type Tab } from '../lib/stores'
+  import SiteCredsBar from './SiteCredsBar.svelte'
 
   // Sitio web de internet: la página va en una vista nativa del sistema (WebView2 / WebKitGTK, internal/browser)
   // que Go pone encima de esta pestaña. Acá está la barra y un div vacío que marca dónde va la vista; la
@@ -165,13 +167,22 @@
     act(() => api.browserNavigate(id, u))
   }
 
-  $: saved = $sites.find((s) => sameSiteUrl(s.url, url))
+  // El sitio guardado de esta pestaña: el que la abrió aunque la página haya navegado (tras el login, por ejemplo).
+  $: saved = siteForTab($sites, tab.siteId, url)
+  /** La franja de credenciales (la llave) está abierta. */
+  let showCreds = false
 
   /** La estrella: agrega la página a los sitios guardados (con el título de la página) o la quita. */
   async function toggleSaved() {
+    const s = saved
     await act(async () => {
-      if (saved) await api.siteDelete(saved.id)
-      else await api.siteSave({ name: title || siteHost(url), url })
+      if (s) {
+        await api.siteDelete(s.id)
+        patchTab(id, { siteId: undefined })
+      } else {
+        const n = await api.siteSave({ name: title || siteHost(url), url })
+        patchTab(id, { siteId: n.id })
+      }
       await reloadSites()
     })
   }
@@ -194,6 +205,17 @@
     <input class="mono" bind:this={input} bind:value={address} spellcheck="false" aria-label={$t('browser.address')} on:focus={() => input.select()} />
     <button
       type="button"
+      class="icon"
+      class:on={showCreds}
+      title={$t('site.creds')}
+      aria-label={$t('site.creds')}
+      aria-pressed={showCreds}
+      on:click={() => (showCreds = !showCreds)}
+    >
+      <Icon name="key" />
+    </button>
+    <button
+      type="button"
       class="icon star"
       class:on={!!saved}
       title={saved ? $t('site.unsave') : $t('site.save')}
@@ -205,6 +227,9 @@
       <Icon name="star" filled={!!saved} />
     </button>
   </form>
+  {#if showCreds}
+    <SiteCredsBar on:close={() => (showCreds = false)} />
+  {/if}
   {#if error}
     <div class="error" role="alert">{error}</div>
   {/if}
@@ -243,6 +268,9 @@
   }
   .star.on {
     color: var(--warning);
+  }
+  .icon.on:not(.star) {
+    color: var(--accent);
   }
   .error {
     padding: 4px 10px;

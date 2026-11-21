@@ -23,6 +23,26 @@ func (a *App) SiteDelete(id string) error { return a.store.DeleteSite(id) }
 // SitePlace mueve el sitio id antes de beforeID ("" = al final).
 func (a *App) SitePlace(id, beforeID string) error { return a.store.PlaceSite(id, beforeID) }
 
+// ---------- Credenciales para los sitios (store/credentials.go) ----------
+
+// CredsList devuelve las credenciales (solo id y etiqueta).
+func (a *App) CredsList() []store.Cred { return a.store.Creds() }
+
+// CredSave crea (in.ID vacío) o edita una credencial.
+func (a *App) CredSave(in store.CredInput) (store.Cred, error) { return a.store.SaveCred(in) }
+
+// CredGet devuelve cuenta, usuario y contraseña de una credencial. Es lo único que manda un secreto
+// guardado al frontend, así que con osat bloqueado no devuelve nada.
+func (a *App) CredGet(id string) (store.CredData, error) {
+	if a.lock != nil && a.lock.Locked() {
+		return store.CredData{}, i18n.Err("app.osatIsLocked")
+	}
+	return a.store.CredData(id)
+}
+
+// CredDelete borra una credencial (y su entrada del keyring).
+func (a *App) CredDelete(id string) error { return a.store.DeleteCred(id) }
+
 // ---------- Navegador nativo de los sitios (internal/browser) ----------
 
 // browserState guarda lo necesario para crear el motor más tarde (al prender el ajuste sin reiniciar).

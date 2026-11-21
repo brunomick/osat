@@ -260,6 +260,25 @@ export interface Site {
   order: number
 }
 
+/** Credencial para los sitios web: acá solo la etiqueta; los datos están en el almacén del sistema (credGet). */
+export interface Cred {
+  id: string
+  label: string
+}
+
+export interface CredData {
+  account: string
+  user: string
+  password: string
+}
+
+/** Para crear (id vacío) o editar una credencial. password vacío con keepPassword conserva la guardada. */
+export interface CredInput extends CredData {
+  id: string
+  label: string
+  keepPassword: boolean
+}
+
 /** Rectángulo de la vista nativa de un sitio: píxeles CSS, relativo al área cliente de la ventana. */
 export interface BrowserBounds {
   x: number
@@ -331,6 +350,8 @@ export interface ImportResult {
   snippets: number
   /** Sitios web que trae el archivo (solo en un .osat). */
   sites: number
+  /** Credenciales para los sitios que trae el archivo (solo en un .osat). */
+  credentials: number
   /** El archivo trae credenciales por defecto, y su usuario (solo en un .osat). */
   hasDefaults?: boolean
   defaultsUser?: string
@@ -682,8 +703,8 @@ export const api = {
   updateApply: (): Promise<void> => app().UpdateApply(),
   updateOpenPage: (): Promise<void> => app().UpdateOpenPage(),
   whatsNew: (lang: string): Promise<WhatsNew> => app().WhatsNew(lang),
-  exportConnections: (ids: string[], password: string, withSecrets: boolean, withSnippets: boolean, withSites: boolean, withDefaults: boolean): Promise<string> =>
-    app().ExportConnections(ids, password, withSecrets, withSnippets, withSites, withDefaults),
+  exportConnections: (ids: string[], password: string, withSecrets: boolean, withSnippets: boolean, withSites: boolean, withCreds: boolean, withDefaults: boolean): Promise<string> =>
+    app().ExportConnections(ids, password, withSecrets, withSnippets, withSites, withCreds, withDefaults),
   importOsatScan: (path: string, password: string): Promise<ImportResult> => app().ImportOsatScan(path, password),
   /** Da de alta las elegidas del último .osat abierto, con contraseñas y claves. */
   importOsat: (items: ImportItem[]): Promise<number> => app().ImportOsat(items),
@@ -866,6 +887,11 @@ export const api = {
   siteDelete: (id: string): Promise<void> => app().SiteDelete(id),
   /** Mueve el sitio antes de beforeId ("" = al final). */
   sitePlace: (id: string, beforeId: string): Promise<void> => app().SitePlace(id, beforeId),
+  credsList: (): Promise<Cred[]> => app().CredsList(),
+  credSave: (c: CredInput): Promise<Cred> => app().CredSave(c),
+  /** Falla si osat está bloqueado. */
+  credGet: (id: string): Promise<CredData> => app().CredGet(id),
+  credDelete: (id: string): Promise<void> => app().CredDelete(id),
   /** Navegador nativo de los sitios web. id = id de la pestaña; los eventos llegan como "browser:event" (BrowserEvent). */
   browserSupported: (): Promise<boolean> => app().BrowserSupported(),
   /** Crea la vista nativa de la pestaña y carga la dirección. scale = devicePixelRatio. */

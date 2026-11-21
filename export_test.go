@@ -63,7 +63,7 @@ func exportFile(t *testing.T, a *App, ids []string, password string, withSecrets
 	if err != nil {
 		t.Fatal(err)
 	}
-	data, err := osatfile.Seal(entries, a.exportSnippets(), a.exportSites(), nil, password)
+	data, err := osatfile.Seal(entries, a.exportSnippets(), a.exportSites(), nil, nil, password)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -341,7 +341,7 @@ func TestExportImportDefaultCreds(t *testing.T) {
 		t.Fatal(err)
 	}
 	d := src.store.Defaults()
-	data, err := osatfile.Seal(entries, nil, nil, &osatfile.DefaultsEntry{User: d.User, Domain: d.Domain, Secret: src.store.DefaultSecret()}, "pw")
+	data, err := osatfile.Seal(entries, nil, nil, nil, &osatfile.DefaultsEntry{User: d.User, Domain: d.Domain, Secret: src.store.DefaultSecret()}, "pw")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -370,5 +370,53 @@ func TestExportImportDefaultCreds(t *testing.T) {
 	}
 	if n, err := dst.ImportOsat(r.Items); err != nil || n != 1 || !byName(dst)["web"].UseDefaultCreds {
 		t.Fatalf("import = %d, %v, %+v", n, err, byName(dst)["web"])
+	}
+}
+
+// Las credenciales para los sitios viajan como sección propia (solo si se eligió incluirlas) y al
+// importar van al keyring de este equipo; una etiqueta que ya existe se saltea.
+func TestExportImportCreds(t *testing.T) {
+	src := newExportApp(t)
+	if _, err := src.CredSave(store.CredInput{Label: "AWS root", Account: "123456789012", User: "admin", Password: "hunter2"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := src.CredSave(store.CredInput{Label: "Hosting", User: "h", Password: "hp"}); err != nil {
+		t.Fatal(err)
+	}
+	creds, err := src.exportCreds()
+	if err != nil || len(creds) != 2 {
+		t.Fatalf("exportCreds = %+v, %v", creds, err)
+	}
+	data, err := osatfile.Seal(nil, nil, nil, creds, nil, "pw")
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "creds.osat")
+	if err := os.WriteFile(path, data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	dst := newExportApp(t)
+	if _, err := dst.CredSave(store.CredInput{Label: "hosting", Password: "local"}); err != nil {
+		t.Fatal(err)
+	}
+	r, err := dst.ImportOsatScan(path, "pw")
+	if err != nil || r.Credentials != 2 {
+		t.Fatalf("ImportOsatScan = %d credenciales, %v", r.Credentials, err)
+	}
+	if _, err := dst.ImportOsat(r.Items); err == nil || !strings.Contains(err.Error(), "Hosting") {
+		t.Fatalf("no informó la credencial salteada: %v", err)
+	}
+	var got []string
+	for _, c := range dst.CredsList() {
+		d, err := dst.CredGet(c.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got = append(got, c.Label+"|"+d.Account+"|"+d.User+"|"+d.Password)
+	}
+	want := []string{"hosting|||local", "AWS root|123456789012|admin|hunter2"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("credenciales importadas = %q, quería %q", got, want)
 	}
 }

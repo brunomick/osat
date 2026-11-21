@@ -425,7 +425,11 @@
       "one": "and {count} web site (ones you already have aren't duplicated)",
       "other": "and {count} web sites (ones you already have aren't duplicated)"
     },
-    "extrasDone": "Snippets and sites imported",
+    "credentials": {
+      "one": "and {count} site credential (labels you already have aren't duplicated)",
+      "other": "and {count} site credentials (labels you already have aren't duplicated)"
+    },
+    "extrasDone": "Snippets, sites and credentials imported",
     "withDefaults": "Use the default credentials in the file ({user}): they replace this osat’s",
     "compass": {
       "where": "Connections saved in Compass, with their passwords",
@@ -460,6 +464,8 @@
     "run": "Export",
     "withSnippets": "Include snippets ({count})",
     "withSites": "Include web sites ({count})",
+    "withCreds": "Include site credentials ({count})",
+    "credsWarn": "Site credentials go with their password: anyone with the file and its password can log in to those panels.",
     "doneFile": "Exported to {path}",
     "withDefaults": "Include the default credentials ({user}), with their password"
   },
@@ -1037,7 +1043,26 @@
     "save": "Save to Sites",
     "unsave": "Remove from Sites",
     "badUrl": "Type an http or https address (for example, example.com)",
-    "loadError": "Couldn't load {url}"
+    "loadError": "Couldn't load {url}",
+    "creds": "Credentials",
+    "credsClose": "Close credentials",
+    "credsEmpty": "No saved credentials yet.",
+    "credNew": "New credentials",
+    "credEdit": "Edit credentials",
+    "credDelete": "Delete credentials",
+    "credDeleteAsk": "Delete the «{label}» credentials? They're also deleted from the system credential store.",
+    "credLabel": "Label",
+    "credLabelPlaceholder": "AWS prod, Client X hosting…",
+    "credAccount": "Account",
+    "credUser": "User",
+    "credPassword": "Password",
+    "credKeep": "unchanged",
+    "credHelp": "Account, user and password are kept in the system credential store.",
+    "copy": "Copy",
+    "show": "Show",
+    "hide": "Hide",
+    "copied": "{what} copied",
+    "passwordCopied": "Password copied: it's cleared from the clipboard in 30 seconds"
   },
   "sites": {
     "newTab": "New browser tab (Ctrl+Shift+T)",

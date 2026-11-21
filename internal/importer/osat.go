@@ -15,17 +15,18 @@ const Osat = "osat"
 // ScanOsat descifra un archivo .osat y lista sus conexiones. Devuelve también
 // las entradas completas (con contraseñas y claves) para darlas de alta
 // después: Item.Ref es la posición de cada una. Los snippets del archivo van
-// aparte y solo se cuentan en Result.Snippets. Los sitios y las credenciales por defecto también van aparte.
-func ScanOsat(path, password string, existing []store.Connection) (Result, []osatfile.Entry, []osatfile.SnippetEntry, []osatfile.SiteEntry, *osatfile.DefaultsEntry, error) {
+// aparte y solo se cuentan en Result.Snippets. Los sitios, las credenciales de los sitios y las credenciales
+// por defecto también van aparte.
+func ScanOsat(path, password string, existing []store.Connection) (Result, []osatfile.Entry, []osatfile.SnippetEntry, []osatfile.SiteEntry, []osatfile.CredEntry, *osatfile.DefaultsEntry, error) {
 	b, err := os.ReadFile(path)
 	if err != nil {
-		return Result{}, nil, nil, nil, nil, err
+		return Result{}, nil, nil, nil, nil, nil, err
 	}
-	entries, snippets, sites, defaults, err := osatfile.Open(b, password)
+	entries, snippets, sites, creds, defaults, err := osatfile.Open(b, password)
 	if err != nil {
-		return Result{}, nil, nil, nil, nil, err
+		return Result{}, nil, nil, nil, nil, nil, err
 	}
-	r := Result{Source: Osat, Location: path, Items: []Item{}, Skipped: []string{}, Snippets: len(snippets), Sites: len(sites)}
+	r := Result{Source: Osat, Location: path, Items: []Item{}, Skipped: []string{}, Snippets: len(snippets), Sites: len(sites), Credentials: len(creds)}
 	if defaults != nil {
 		r.HasDefaults, r.DefaultsUser = true, defaults.User
 	}
@@ -46,5 +47,5 @@ func ScanOsat(path, password string, existing []store.Connection) (Result, []osa
 		}
 		return strings.ToLower(a.Name) < strings.ToLower(b.Name)
 	})
-	return r, entries, snippets, sites, defaults, nil
+	return r, entries, snippets, sites, creds, defaults, nil
 }

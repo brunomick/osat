@@ -83,6 +83,8 @@ type Result struct {
 	Snippets int `json:"snippets"`
 	// Cuántos sitios web trae el archivo (solo en un .osat).
 	Sites int `json:"sites"`
+	// Cuántas credenciales para los sitios trae el archivo (solo en un .osat).
+	Credentials int `json:"credentials"`
 	// El archivo trae credenciales por defecto, y su usuario (solo en un .osat).
 	HasDefaults  bool   `json:"hasDefaults,omitempty"`
 	DefaultsUser string `json:"defaultsUser,omitempty"`

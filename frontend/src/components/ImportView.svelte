@@ -9,7 +9,7 @@
   import { api, codedText, errorText, parseError, type ImportItem, type ImportResult, type ImportSource } from '../lib/api'
   import { askSecret } from '../lib/dialog'
   import { defaultPort } from '../lib/protocol'
-  import { closeTab, patchTab, reloadConnections, reloadSites, toast, type Tab } from '../lib/stores'
+  import { closeTab, patchTab, reloadConnections, reloadCreds, reloadSites, toast, type Tab } from '../lib/stores'
 
   export let tab: Tab
 
@@ -41,8 +41,8 @@
 
   $: items = result?.items ?? []
   $: allOn = items.length > 0 && selected.size === items.length
-  // Un .osat puede traer solo snippets o sitios: se importan aunque no se elija ninguna conexión.
-  $: extras = source?.id === 'osat' && !!(result?.snippets || result?.sites || (result?.hasDefaults && withDefaults))
+  // Un .osat puede traer solo snippets, sitios o credenciales: se importan aunque no se elija ninguna conexión.
+  $: extras = source?.id === 'osat' && !!(result?.snippets || result?.sites || result?.credentials || (result?.hasDefaults && withDefaults))
   // Grupos de las sesiones marcadas: cada uno se puede renombrar antes de importar.
   $: groups = [...new Set(items.filter((_, i) => selected.has(i)).map((it) => it.group).filter(Boolean))]
 
@@ -151,6 +151,7 @@
       const n = await (source?.id === 'osat' ? api.importOsat(list) : api.importConnections(list))
       await reloadConnections()
       await reloadSites().catch(() => {})
+      await reloadCreds().catch(() => {})
       if (n || !extras) toast(tr(n === 1 ? 'import.imported.one' : 'import.imported.other', { count: n }), 'success')
       else toast(tr('import.extrasDone'), 'success')
       close()
@@ -158,6 +159,7 @@
       // Puede haber importado algunas: recargar igual.
       await reloadConnections()
       await reloadSites().catch(() => {})
+      await reloadCreds().catch(() => {})
       toast(errorText(e), 'error', 8000)
     } finally {
       importing = false
@@ -245,6 +247,9 @@
         {/if}
         {#if result.sites}
           <p class="muted small">{$t(result.sites === 1 ? 'import.sites.one' : 'import.sites.other', { count: result.sites })}</p>
+        {/if}
+        {#if result.credentials}
+          <p class="muted small">{$t(result.credentials === 1 ? 'import.credentials.one' : 'import.credentials.other', { count: result.credentials })}</p>
         {/if}
         {#if result.hasDefaults}
           <label class="small">

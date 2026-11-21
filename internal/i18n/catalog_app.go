@@ -6,6 +6,7 @@ func init() {
 		"app.onlyHttpOrHttpsAddresses":         {es: "solo se pueden abrir direcciones http o https", en: "only http or https addresses can be opened"},
 		"app.thatForwardNoLongerExists":        {es: "ese reenvío ya no existe", en: "that forward no longer exists"},
 		"app.connectionDoesNotExist":           {es: "conexión inexistente", en: "connection does not exist"},
+		"app.osatIsLocked":                     {es: "osat está bloqueado", en: "osat is locked"},
 		"app.theConnectionIsNotA":              {es: "la conexión no es de escritorio remoto (RDP)", en: "the connection is not a remote desktop (RDP) one"},
 		"app.sJumpHostConnectionS":             {es: "%s: no se encontró la conexión de salto «%s», se importó sin salto", en: "%s: jump host connection «%s» not found, imported without a jump host"},
 		"app.sCouldnTLinkThe":                  {es: "%s: no se pudo enlazar el salto «%s»: %v", en: "%s: couldn't link the jump host «%s»: %v"},

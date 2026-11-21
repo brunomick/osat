@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Site } from './api'
-import { filterSites, placeBeforeId } from './sites'
+import { filterSites, placeBeforeId, siteForTab } from './sites'
 
 const s = (id: string, name: string, url: string, order: number): Site => ({ id, name, url, order })
 const list = [s('c', 'Consola AWS', 'https://console.aws.amazon.com', 3), s('a', 'Hosting', 'https://panel.hosting.com', 1), s('b', 'DNS', 'https://dns.example.org', 2)]
@@ -45,5 +45,18 @@ describe('placeBeforeId', () => {
 
   it('abajo de la última va al final', () => {
     expect(placeBeforeId(shown, 'a', 'c', 'after')).toBe('')
+  })
+})
+
+describe('siteForTab', () => {
+  it('el sitio que abrió la pestaña gana aunque la dirección haya cambiado', () => {
+    expect(siteForTab(list, 'c', 'https://console.aws.amazon.com/home?region=us-east-1')?.id).toBe('c')
+    expect(siteForTab(list, 'c', 'https://panel.hosting.com')?.id).toBe('c')
+  })
+
+  it('sin sitio de origen, o si ya no existe, busca por dirección', () => {
+    expect(siteForTab(list, undefined, 'https://dns.example.org')?.id).toBe('b')
+    expect(siteForTab(list, 'borrado', 'https://dns.example.org')?.id).toBe('b')
+    expect(siteForTab(list, undefined, 'https://otro.example.com')).toBeUndefined()
   })
 })

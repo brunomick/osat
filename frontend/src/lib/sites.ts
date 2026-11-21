@@ -1,4 +1,5 @@
 import type { Site } from './api'
+import { sameSiteUrl } from './siteUrl'
 
 /** Los sitios que coinciden con la búsqueda (nombre o dirección), en el orden elegido por el usuario. */
 export function filterSites(sites: Site[], query: string): Site[] {
@@ -17,4 +18,12 @@ export function placeBeforeId(shown: Site[], dragId: string, ref: string | undef
   if (side === 'before') return ref
   const i = shown.findIndex((s) => s.id === ref)
   return shown.slice(i + 1).find((s) => s.id !== dragId)?.id ?? ''
+}
+
+/**
+ * El sitio guardado de una pestaña: el que la abrió (siteId), aunque la página haya navegado (por ejemplo,
+ * tras el login); si no hay o ya no existe, el que tiene la misma dirección que la página.
+ */
+export function siteForTab(sites: Site[], siteId: string | undefined, url: string): Site | undefined {
+  return (siteId ? sites.find((s) => s.id === siteId) : undefined) ?? sites.find((s) => sameSiteUrl(s.url, url))
 }

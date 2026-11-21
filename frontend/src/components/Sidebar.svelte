@@ -347,7 +347,7 @@
       x: e.clientX,
       y: e.clientY,
       items: [
-        { label: tr('common.open'), icon: 'globe', action: () => openSite(s.url, s.name) },
+        { label: tr('common.open'), icon: 'globe', action: () => openSite(s.url, s.name, s.id) },
         { label: tr('sites.editMenu'), icon: 'edit', action: () => saveSite(s) },
         { separator: true, label: '' },
         { label: tr('sites.remove'), icon: 'trash', danger: true, action: () => removeSite(s) },
@@ -770,8 +770,8 @@
             title={s.url}
             data-site-row={s.id}
             on:mousedown={(e) => down(e, 'site', s.id, s.name)}
-            on:click={() => !justDragged && openSite(s.url, s.name)}
-            on:keydown={(e) => e.target === e.currentTarget && e.key === 'Enter' && openSite(s.url, s.name)}
+            on:click={() => !justDragged && openSite(s.url, s.name, s.id)}
+            on:keydown={(e) => e.target === e.currentTarget && e.key === 'Enter' && openSite(s.url, s.name, s.id)}
             on:contextmenu={(e) => siteMenu(e, s)}
           >
             <span class="ficon"><Icon name="globe" size={13} /></span>

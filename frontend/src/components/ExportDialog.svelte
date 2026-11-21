@@ -25,6 +25,9 @@
   let withSnippets = true
   let withSites = true
   let snippetCount = 0
+  // Credenciales de los sitios (con su contraseña): solo si se elige, apagado de entrada.
+  let withCreds = false
+  let credCount = 0
   // Credenciales por defecto (con su contraseña): solo si se elige, apagado de entrada.
   let withDefaults = false
   let defaultsUser = ''
@@ -32,6 +35,11 @@
   onMount(async () => {
     try {
       snippetCount = ((await api.snippetsList()) ?? []).length
+    } catch {
+      // sin la cantidad, la casilla queda deshabilitada
+    }
+    try {
+      credCount = ((await api.credsList()) ?? []).length
     } catch {
       // sin la cantidad, la casilla queda deshabilitada
     }
@@ -49,7 +57,7 @@
   $: rows = buildRows($connections, [], collapsed)
   $: chosen = $connections.filter((c) => selected.has(c.id)).map((c) => c.id)
   $: allOn = chosen.length === $connections.length
-  $: extras = (withSnippets && snippetCount > 0) || (withSites && $sites.length > 0) || (withDefaults && hasDefaults)
+  $: extras = (withSnippets && snippetCount > 0) || (withSites && $sites.length > 0) || (withCreds && credCount > 0) || (withDefaults && hasDefaults)
   $: problem =
     password.length < 8 ? $t('export.pwShort') : password !== confirm ? $t('export.pwMismatch') : ''
 
@@ -102,7 +110,7 @@
     if (problem || saving || (!chosen.length && !extras)) return
     saving = true
     try {
-      const path = await api.exportConnections(chosen, password, withSecrets, withSnippets, withSites, withDefaults && hasDefaults)
+      const path = await api.exportConnections(chosen, password, withSecrets, withSnippets, withSites, withCreds && credCount > 0, withDefaults && hasDefaults)
       if (!path) return
       if (chosen.length) toast(tr(chosen.length === 1 ? 'export.done.one' : 'export.done.other', { count: chosen.length, path }), 'success', 6000)
       else toast(tr('export.doneFile', { path }), 'success', 6000)
@@ -186,6 +194,13 @@
       <input type="checkbox" bind:checked={withSites} disabled={!$sites.length} />
       <span>{$t('export.withSites', { count: $sites.length })}</span>
     </label>
+    <label class="check">
+      <input type="checkbox" bind:checked={withCreds} disabled={!credCount} />
+      <span>{$t('export.withCreds', { count: credCount })}</span>
+    </label>
+    {#if withCreds && credCount}
+      <p class="warn small">{$t('export.credsWarn')}</p>
+    {/if}
     <label class="check">
       <input type="checkbox" bind:checked={withDefaults} disabled={!hasDefaults} />
       <span>{$t('export.withDefaults', { user: defaultsUser || '—' })}</span>

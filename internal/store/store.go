@@ -121,6 +121,7 @@ type Store struct {
 	forwards map[string]Forward // ver forwards.go
 	snippets map[string]Snippet // ver snippets.go
 	sites    map[string]Site    // ver sites.go
+	creds    []Cred             // ver credentials.go
 	defaults DefaultCreds       // ver defaults.go
 
 	workspaces    map[string]Workspace // ver workspaces.go
@@ -169,6 +170,9 @@ func New() (*Store, error) {
 		return nil, err
 	}
 	if err := s.loadSites(); err != nil {
+		return nil, err
+	}
+	if err := s.loadCreds(); err != nil {
 		return nil, err
 	}
 	if err := s.loadDefaults(); err != nil {

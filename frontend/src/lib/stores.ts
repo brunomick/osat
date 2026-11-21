@@ -1,5 +1,5 @@
 import { writable, derived, get } from 'svelte/store'
-import { api, errorText, type BridgeStatus, type Connection, type LocalShell, type Settings, type Site, type Transfer } from './api'
+import { api, errorText, type BridgeStatus, type Connection, type Cred, type LocalShell, type Settings, type Site, type Transfer } from './api'
 import { confirmDialog } from './dialog'
 import { locale, resolveLanguage, tr, type Locale } from './i18n'
 import { migrateDefaultShell } from './defaultshell'
@@ -86,6 +86,8 @@ export interface Tab {
   sudo?: boolean
   /** Para el navegador: dirección con la que arranca. Para un sitio web: la dirección actual (se guarda en los workspaces). */
   url?: string
+  /** Para un sitio web: el sitio guardado del que se abrió (sigue valiendo aunque la página navegue). */
+  siteId?: string
   dirty?: boolean
   /** Para los puertos: cuántos reenvíos están en marcha (cerrar la pestaña los detiene). */
   forwarding?: number
@@ -244,9 +246,10 @@ export function openBrowser(
   })
 }
 
-/** Sitio web de internet en una pestaña, con el navegador nativo (SiteView). name: el título hasta que la página tenga el suyo. */
-export function openSite(url: string, name?: string) {
-  return openTab({ kind: 'site', connId: '', title: name || siteHost(url), url })
+/** Sitio web de internet en una pestaña, con el navegador nativo (SiteView). name: el título hasta que la página tenga el suyo.
+ * siteId: el sitio guardado del que se abre (para sus credenciales y la estrella). */
+export function openSite(url: string, name?: string, siteId?: string) {
+  return openTab({ kind: 'site', connId: '', title: name || siteHost(url), url, ...(siteId ? { siteId } : {}) })
 }
 
 /** Pestaña de navegador vacía: la página se abre al escribir una dirección. */
@@ -256,6 +259,13 @@ export function openBlankSite() {
 
 /** Sitios web guardados (los que muestra la barra lateral; la estrella de SiteView los agrega y quita). */
 export const sites = writable<Site[]>([])
+
+/** Credenciales para los sitios (solo id y etiqueta). Las carga la llave de SiteView la primera vez que se abre. */
+export const creds = writable<Cred[]>([])
+
+export async function reloadCreds() {
+  creds.set((await api.credsList()) ?? [])
+}
 
 /** Este sistema tiene navegador nativo para los sitios (lo dice Go al arrancar). */
 export const browserSupported = writable(false)

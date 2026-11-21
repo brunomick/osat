@@ -425,7 +425,11 @@
       "one": "y {count} sitio web (los que ya tenés no se duplican)",
       "other": "y {count} sitios web (los que ya tenés no se duplican)"
     },
-    "extrasDone": "Snippets y sitios importados",
+    "credentials": {
+      "one": "y {count} credencial de sitios (las etiquetas que ya tenés no se duplican)",
+      "other": "y {count} credenciales de sitios (las etiquetas que ya tenés no se duplican)"
+    },
+    "extrasDone": "Snippets, sitios y credenciales importados",
     "withDefaults": "Usar las credenciales por defecto del archivo ({user}): reemplazan las de este osat",
     "compass": {
       "where": "Conexiones guardadas en Compass, con sus contraseñas",
@@ -460,6 +464,8 @@
     "run": "Exportar",
     "withSnippets": "Incluir los snippets ({count})",
     "withSites": "Incluir los sitios web ({count})",
+    "withCreds": "Incluir las credenciales de los sitios ({count})",
+    "credsWarn": "Las credenciales de los sitios van con su contraseña: quien tenga el archivo y la contraseña del archivo puede entrar a esos paneles.",
     "doneFile": "Exportado a {path}",
     "withDefaults": "Incluir las credenciales por defecto ({user}), con su contraseña"
   },
@@ -1037,7 +1043,26 @@
     "save": "Guardar en Sitios",
     "unsave": "Quitar de Sitios",
     "badUrl": "Escribí una dirección http o https (por ejemplo, example.com)",
-    "loadError": "No se pudo cargar {url}"
+    "loadError": "No se pudo cargar {url}",
+    "creds": "Credenciales",
+    "credsClose": "Cerrar credenciales",
+    "credsEmpty": "Todavía no hay credenciales guardadas.",
+    "credNew": "Nueva credencial",
+    "credEdit": "Editar credencial",
+    "credDelete": "Borrar credencial",
+    "credDeleteAsk": "¿Borrar las credenciales «{label}»? Se borran también del almacén de credenciales del sistema.",
+    "credLabel": "Etiqueta",
+    "credLabelPlaceholder": "AWS prod, Hosting cliente X…",
+    "credAccount": "Cuenta",
+    "credUser": "Usuario",
+    "credPassword": "Contraseña",
+    "credKeep": "sin cambios",
+    "credHelp": "Cuenta, usuario y contraseña se guardan en el almacén de credenciales del sistema.",
+    "copy": "Copiar",
+    "show": "Mostrar",
+    "hide": "Ocultar",
+    "copied": "{what} copiado",
+    "passwordCopied": "Contraseña copiada: se borra del portapapeles en 30 segundos"
   },
   "sites": {
     "newTab": "Nueva pestaña del navegador (Ctrl+Shift+T)",

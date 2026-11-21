@@ -72,6 +72,14 @@ type SiteEntry struct {
 	URL  string `json:"url"`
 }
 
+// CredEntry es una credencial para los sitios web exportada (solo si se eligió incluirlas).
+type CredEntry struct {
+	Label    string `json:"label"`
+	Account  string `json:"account,omitempty"`
+	User     string `json:"user,omitempty"`
+	Password string `json:"password,omitempty"`
+}
+
 const (
 	magic   = "osat-connections"
 	version = 1
@@ -101,6 +109,7 @@ type payload struct {
 	Snippets    []SnippetEntry `json:"snippets,omitempty"` // los archivos anteriores no lo tienen
 	Sites       []SiteEntry    `json:"sites,omitempty"`    // ídem
 	Defaults    *DefaultsEntry `json:"defaults,omitempty"` // ídem
+	Credentials []CredEntry    `json:"credentials,omitempty"`
 }
 
 // ErrBadPassword: la contraseña no es la del archivo (o el archivo se alteró).
@@ -118,12 +127,13 @@ func gcm(key []byte) (cipher.AEAD, error) {
 	return cipher.NewGCM(block)
 }
 
-// Seal cifra las conexiones, los snippets, los sitios y las credenciales por defecto (nil = no van) con la contraseña y devuelve el archivo .osat.
-func Seal(entries []Entry, snippets []SnippetEntry, sites []SiteEntry, defaults *DefaultsEntry, password string) ([]byte, error) {
+// Seal cifra las conexiones, los snippets, los sitios, las credenciales de los sitios y las credenciales por
+// defecto (nil = no van) con la contraseña y devuelve el archivo .osat.
+func Seal(entries []Entry, snippets []SnippetEntry, sites []SiteEntry, creds []CredEntry, defaults *DefaultsEntry, password string) ([]byte, error) {
 	if password == "" {
 		return nil, i18n.Err("app.thePasswordIsRequired")
 	}
-	plain, err := json.Marshal(payload{Connections: entries, Snippets: snippets, Sites: sites, Defaults: defaults})
+	plain, err := json.Marshal(payload{Connections: entries, Snippets: snippets, Sites: sites, Credentials: creds, Defaults: defaults})
 	if err != nil {
 		return nil, err
 	}
@@ -144,32 +154,32 @@ func Seal(entries []Entry, snippets []SnippetEntry, sites []SiteEntry, defaults 
 }
 
 // Open descifra un archivo .osat.
-func Open(data []byte, password string) ([]Entry, []SnippetEntry, []SiteEntry, *DefaultsEntry, error) {
+func Open(data []byte, password string) ([]Entry, []SnippetEntry, []SiteEntry, []CredEntry, *DefaultsEntry, error) {
 	var env envelope
 	if err := json.Unmarshal(data, &env); err != nil || env.Format != magic {
-		return nil, nil, nil, nil, i18n.Err("data.itIsNotAnOsat")
+		return nil, nil, nil, nil, nil, i18n.Err("data.itIsNotAnOsat")
 	}
 	if env.Version != version || env.KDF != "argon2id" {
-		return nil, nil, nil, nil, i18n.Err("data.theFileIsFromA", env.Version)
+		return nil, nil, nil, nil, nil, i18n.Err("data.theFileIsFromA", env.Version)
 	}
 	// Un archivo armado a mano no puede pedir gigas de memoria ni minutos de CPU.
 	// (argon2.IDKey hace panic con time o threads en 0.)
 	if env.Memory > 1024*1024 || env.Time == 0 || env.Time > 16 || env.Threads == 0 || len(env.Nonce) != 12 {
-		return nil, nil, nil, nil, i18n.Err("data.invalidConnectionsFile")
+		return nil, nil, nil, nil, nil, i18n.Err("data.invalidConnectionsFile")
 	}
 	aead, err := gcm(deriveKey(password, env.Salt, env.Time, env.Memory, env.Threads))
 	if err != nil {
-		return nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, err
 	}
 	plain, err := aead.Open(nil, env.Nonce, env.Data, nil)
 	if err != nil {
-		return nil, nil, nil, nil, ErrBadPassword
+		return nil, nil, nil, nil, nil, ErrBadPassword
 	}
 	var p payload
 	if err := json.Unmarshal(plain, &p); err != nil {
-		return nil, nil, nil, nil, i18n.Err("data.invalidConnectionsFileV", err)
+		return nil, nil, nil, nil, nil, i18n.Err("data.invalidConnectionsFileV", err)
 	}
-	return p.Connections, p.Snippets, p.Sites, p.Defaults, nil
+	return p.Connections, p.Snippets, p.Sites, p.Credentials, p.Defaults, nil
 }
 
 // SaveKey guarda una clave importada en dir y devuelve su ruta. El nombre

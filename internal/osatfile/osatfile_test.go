@@ -27,7 +27,7 @@ func TestSealOpenRoundTrip(t *testing.T) {
 		{Name: "tail", Command: "tail -f /var/log/{{archivo}}\n", Mode: "paste"},
 	}
 	sites := []SiteEntry{{Name: "Hosting", URL: "https://panel.example.com/login"}, {Name: "Nube", URL: "http://nube.local:8080"}}
-	data, err := Seal(in, snips, sites, nil, "clave del equipo")
+	data, err := Seal(in, snips, sites, nil, nil, "clave del equipo")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,7 +39,7 @@ func TestSealOpenRoundTrip(t *testing.T) {
 	if bytes.Contains(data, []byte("systemctl")) {
 		t.Fatal("el archivo tiene un snippet sin cifrar")
 	}
-	out, outSnips, outSites, _, err := Open(data, "clave del equipo")
+	out, outSnips, outSites, _, _, err := Open(data, "clave del equipo")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,34 +59,34 @@ func TestSealOpenRoundTrip(t *testing.T) {
 
 // Un archivo sin snippets (como los de antes) se abre con la lista vacía.
 func TestOpenWithoutSnippets(t *testing.T) {
-	data, err := Seal([]Entry{{Name: "x", Host: "h", User: "u"}}, nil, nil, nil, "pw")
+	data, err := Seal([]Entry{{Name: "x", Host: "h", User: "u"}}, nil, nil, nil, nil, "pw")
 	if err != nil {
 		t.Fatal(err)
 	}
-	entries, snips, _, _, err := Open(data, "pw")
+	entries, snips, _, _, _, err := Open(data, "pw")
 	if err != nil || len(entries) != 1 || len(snips) != 0 {
 		t.Fatalf("Open = %+v, %+v, %v", entries, snips, err)
 	}
 }
 
 func TestOpenWrongPassword(t *testing.T) {
-	data, err := Seal([]Entry{{Name: "x", Host: "h", User: "u"}}, nil, nil, nil, "buena")
+	data, err := Seal([]Entry{{Name: "x", Host: "h", User: "u"}}, nil, nil, nil, nil, "buena")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, _, err := Open(data, "mala"); !errors.Is(err, ErrBadPassword) {
+	if _, _, _, _, _, err := Open(data, "mala"); !errors.Is(err, ErrBadPassword) {
 		t.Fatalf("esperaba ErrBadPassword, fue %v", err)
 	}
 }
 
 func TestOpenNotOsat(t *testing.T) {
-	if _, _, _, _, err := Open([]byte(`{"connections":[]}`), "x"); err == nil {
+	if _, _, _, _, _, err := Open([]byte(`{"connections":[]}`), "x"); err == nil {
 		t.Fatal("aceptó un archivo que no es .osat")
 	}
 }
 
 func TestSealNeedsPassword(t *testing.T) {
-	if _, err := Seal(nil, nil, nil, nil, ""); err == nil {
+	if _, err := Seal(nil, nil, nil, nil, nil, ""); err == nil {
 		t.Fatal("exportó sin contraseña")
 	}
 }
@@ -124,11 +124,11 @@ func TestSaveKey(t *testing.T) {
 func TestPinsRoundTrip(t *testing.T) {
 	in := []Entry{{Name: "a", Protocol: store.ProtoSSH, Host: "h", Port: 22, User: "u", AuthType: store.AuthAgent,
 		Pins: []store.PinnedDir{{Path: "/srv", Name: "web"}, {Path: "/var/log"}}}}
-	data, err := Seal(in, nil, nil, nil, "clave")
+	data, err := Seal(in, nil, nil, nil, nil, "clave")
 	if err != nil {
 		t.Fatal(err)
 	}
-	out, _, _, _, err := Open(data, "clave")
+	out, _, _, _, _, err := Open(data, "clave")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -140,26 +140,26 @@ func TestPinsRoundTrip(t *testing.T) {
 // Las credenciales por defecto van cifradas y vuelven igual; sin ellas, Open devuelve nil.
 func TestDefaultsRoundTrip(t *testing.T) {
 	in := &DefaultsEntry{User: "admin", Domain: "CORP", Secret: "s3cr3t-por-defecto"}
-	data, err := Seal([]Entry{{Name: "x", Host: "h", UseDefaultCreds: true}}, nil, nil, in, "pw")
+	data, err := Seal([]Entry{{Name: "x", Host: "h", UseDefaultCreds: true}}, nil, nil, nil, in, "pw")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if bytes.Contains(data, []byte(in.Secret)) {
 		t.Fatal("la contraseña por defecto quedó sin cifrar")
 	}
-	entries, _, _, out, err := Open(data, "pw")
+	entries, _, _, _, out, err := Open(data, "pw")
 	if err != nil || out == nil || *out != *in || !entries[0].UseDefaultCreds {
 		t.Fatalf("Open = %+v, %+v, %v", entries, out, err)
 	}
-	data, _ = Seal([]Entry{{Name: "x", Host: "h"}}, nil, nil, nil, "pw")
-	if _, _, _, out, _ := Open(data, "pw"); out != nil {
+	data, _ = Seal([]Entry{{Name: "x", Host: "h"}}, nil, nil, nil, nil, "pw")
+	if _, _, _, _, out, _ := Open(data, "pw"); out != nil {
 		t.Fatalf("sin credenciales por defecto, Open = %+v", out)
 	}
 }
 
 // Un archivo armado a mano con time o threads en 0 no puede hacer caer a osat (argon2 hace panic).
 func TestOpenRejectsZeroCost(t *testing.T) {
-	data, err := Seal([]Entry{{Name: "x", Host: "h", User: "u"}}, nil, nil, nil, "clave larga")
+	data, err := Seal([]Entry{{Name: "x", Host: "h", User: "u"}}, nil, nil, nil, nil, "clave larga")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -170,7 +170,7 @@ func TestOpenRejectsZeroCost(t *testing.T) {
 		}
 		m[field] = 0
 		bad, _ := json.Marshal(m)
-		if _, _, _, _, err := Open(bad, "clave larga"); err == nil {
+		if _, _, _, _, _, err := Open(bad, "clave larga"); err == nil {
 			t.Errorf("%s=0: se abrió un archivo inválido", field)
 		}
 	}
