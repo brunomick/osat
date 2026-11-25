@@ -1434,8 +1434,6 @@
     "busyTitle": "Someone is in this shell",
     "busyMsg": "People inside now: {count}. If you join, they see what you see and anyone can type.",
     "busyEnter": "Join anyway",
-    "mine": "mine",
-    "manual": "tmux",
     "inside": "People inside: {count}",
     "stale": "List not refreshed: no tab is connected to this server.",
     "tip": "Persistent shell: it keeps running on the server even if you close the tab. Last activity: {when}.",

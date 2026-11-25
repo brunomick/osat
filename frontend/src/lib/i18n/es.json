@@ -1434,8 +1434,6 @@
     "busyTitle": "Hay alguien en esta shell",
     "busyMsg": "Gente adentro ahora: {count}. Si entrás, ven lo mismo que vos y cualquiera puede escribir.",
     "busyEnter": "Entrar igual",
-    "mine": "mía",
-    "manual": "tmux",
     "inside": "Gente adentro: {count}",
     "stale": "Lista sin actualizar: no hay ninguna pestaña conectada a este servidor.",
     "tip": "Shell persistente: sigue corriendo en el servidor aunque cierres la pestaña. Última actividad: {when}.",

@@ -204,11 +204,6 @@
     return () => clearInterval(timer)
   })
 
-  function ownerText(x: TmuxSession, me: string, tf: typeof tr) {
-    const k = ownerKind(x, me)
-    return k === 'mine' ? tf('shells.mine') : k === 'manual' ? tf('shells.manual') : x.owner
-  }
-
   async function newShell(c: Connection) {
     const name = await promptDialog({
       title: tr('shells.newTitle'),
@@ -1095,7 +1090,6 @@
             <span class="branch">{branch(before + i, before + shellRows(c.id).length)}</span>
             <span class="kind" class:running={!st?.stale}><Icon name="shell" size={12} /></span>
             <span class="label">{x.name}</span>
-            <span class="owner">{ownerText(x, st?.list?.me ?? '', $tl)}</span>
             {#if others > 0}
               <span class="live" title={$tl('shells.inside', { count: others })}>{others}</span>
             {/if}
@@ -1396,12 +1390,6 @@
   }
   .kind.running {
     color: var(--success);
-  }
-  .shell .owner {
-    flex: none;
-    margin-left: 6px;
-    font-size: 10px;
-    color: var(--text-3);
   }
   .live {
     flex: none;
