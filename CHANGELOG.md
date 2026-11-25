@@ -4,6 +4,12 @@ Todos los cambios importantes de osat se anotan acá.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
+## [Sin publicar]
+
+### Agregado
+
+- **Shells persistentes**: terminales SSH que siguen corriendo en el servidor aunque cierres la pestaña, cierres osat o se corte la red, con tmux por debajo y sin tener que usarlo. Con clic derecho sobre un servidor → *Nueva shell persistente…*, elegís el nombre y listo. Debajo del servidor, en la barra lateral, aparecen todas las del servidor (las tuyas, las de otros osat y las sesiones de tmux armadas a mano), con su dueño y cuánta gente hay adentro; un clic las vuelve a abrir con el historial reciente y el scroll normal. Se pueden renombrar (renombra la sesión de tmux, todos ven el nombre nuevo), terminar, o abrir *solo para mirar* (tmux 3.1 o más nuevo). Si hay alguien adentro, osat avisa antes de entrar. Los espacios de trabajo y la reconexión automática vuelven a la misma shell. Necesita tmux 3.0 o más nuevo en el servidor.
+
 ## [1.1.5-beta.1] - 2026-11-21
 
 Versión beta: trae cambios que todavía se están probando.
