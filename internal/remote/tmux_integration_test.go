@@ -86,8 +86,8 @@ func TestTmuxIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	id := strings.TrimSpace(out)
-	if !strings.HasPrefix(id, "$") {
+	id, name, _ := strings.Cut(strings.TrimSpace(out), " ")
+	if !strings.HasPrefix(id, "$") || name != "osat prueba" {
 		t.Fatalf("crear: %q", out)
 	}
 	t.Cleanup(func() { _, _ = tmuxExec(c, tmuxKillScript(id)) })
@@ -118,7 +118,7 @@ func TestTmuxIntegration(t *testing.T) {
 	defer closeConn2()
 	waitOutput(t, get2, "fila-150")
 
-	name, err := tmuxExec(c, tmuxRenameScript(id, "nuevo.nombre"))
+	name, err = tmuxExec(c, tmuxRenameScript(id, "nuevo.nombre"))
 	if err != nil || strings.TrimSpace(name) != "nuevo_nombre" {
 		t.Fatalf("renombrar: %q %v", name, err)
 	}

@@ -104,3 +104,14 @@ func TestTmuxTermRenameAndExit(t *testing.T) {
 		t.Fatal("exit debe marcar el fin")
 	}
 }
+
+func TestTmuxGone(t *testing.T) {
+	for _, s := range []string{"can't find session: $3", "no server running on /tmp/tmux-1000/default", "error connecting to /tmp/tmux-0/default (No such file or directory)"} {
+		if !tmuxGone(s) {
+			t.Errorf("%q", s)
+		}
+	}
+	if tmuxGone("open terminal failed: not a terminal") {
+		t.Error("otro error no es una sesión que ya no existe")
+	}
+}

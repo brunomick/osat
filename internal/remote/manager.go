@@ -160,7 +160,8 @@ type Session struct {
 
 	noShell atomic.Bool // el servidor no deja ejecutar comandos (ver Copy)
 
-	tmux *tmuxCtl // shell persistente en modo control (ver tmuxterm.go); las teclas y el tamaño van por acá
+	tmuxID string   // la sesión de tmux de una shell persistente (ver tmuxterm.go)
+	tmux   *tmuxCtl // shell persistente en modo control (ver tmuxterm.go); las teclas y el tamaño van por acá
 
 	capsMu sync.Mutex
 	caps   *findCaps  // qué hay en el servidor para buscar archivos, una vez por sesión (ver search.go)
@@ -178,6 +179,8 @@ type SessionInfo struct {
 	ConnID string `json:"connId"`
 	Title  string `json:"title"`
 	Home   string `json:"home,omitempty"`
+	// TmuxID: la sesión de tmux de una shell persistente (la recién creada, con TmuxTarget.Create).
+	TmuxID string `json:"tmuxId,omitempty"`
 }
 
 // ConnectRequest: Secret es opcional (si se pidió al usuario en el momento).
@@ -410,7 +413,7 @@ func (m *Manager) OpenTerminal(req ConnectRequest) (SessionInfo, error) {
 		sh.release()
 		return SessionInfo{}, err
 	}
-	return SessionInfo{ID: s.ID, Kind: KindTerminal, ConnID: c.ID, Title: s.title}, nil
+	return SessionInfo{ID: s.ID, Kind: KindTerminal, ConnID: c.ID, Title: s.title, TmuxID: s.tmuxID}, nil
 }
 
 // reconnect: la terminal ya tiene algo en pantalla y no se borra (ver ConnectRequest.Reconnect).
@@ -641,7 +644,7 @@ func (m *Manager) OpenTerminalFrom(sessionID string, cols, rows int, tmux *TmuxT
 		src.shared.release()
 		return SessionInfo{}, err
 	}
-	return SessionInfo{ID: s.ID, Kind: KindTerminal, ConnID: c.ID, Title: s.title}, nil
+	return SessionInfo{ID: s.ID, Kind: KindTerminal, ConnID: c.ID, Title: s.title, TmuxID: s.tmuxID}, nil
 }
 
 func (m *Manager) startSFTP(sh *sharedClient, c store.Connection) (SessionInfo, error) {

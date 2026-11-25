@@ -407,3 +407,23 @@ describe('nombre propio de una terminal', () => {
     ])
   })
 })
+
+describe('shells persistentes en los espacios de trabajo', () => {
+  const one = (t: Tab): WorkspaceData => snapshot([t], pane('p', [t.id]))
+
+  it('guarda la sesión de tmux y al restaurar se conecta a la misma', () => {
+    const data = one(tab('t1', { label: 'deploy', tmux: { id: '$3', name: 'deploy', readOnly: true } }))
+    expect(data.tabs[0].tmux).toEqual({ id: '$3', name: 'deploy', readOnly: true })
+    const r = restore(JSON.parse(JSON.stringify(data)), [conn('c1')])
+    expect(r?.tabs[0].tmux).toEqual({ id: '$3', name: 'deploy', readOnly: true })
+  })
+
+  it('una shell que todavía se está creando (sin id) se guarda como terminal común', () => {
+    expect(one(tab('t1', { tmux: { id: '', name: 'x', create: true } })).tabs[0].tmux).toBeUndefined()
+  })
+
+  it('una sesión guardada dañada se descarta', () => {
+    const data = { version: 1, tabs: [{ ref: 't1', kind: 'terminal', connId: 'c1', title: 'x', tmux: { id: 'sin-pesos', name: 1 } }], layout: { kind: 'pane', tabs: ['t1'], active: 't1' } }
+    expect(restore(data, [conn('c1')])?.tabs[0].tmux).toBeUndefined()
+  })
+})

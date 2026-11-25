@@ -12,6 +12,7 @@
   import { connectTab, CancelledError } from '../lib/connect'
   import { confirmDialog } from '../lib/dialog'
   import { reconnect, type Reconnector } from '../lib/reconnect'
+  import { refreshShells } from '../lib/tmux'
   import { isAndroid, keys } from '../lib/platform'
   import { resolve } from '../lib/termthemes'
   import { oscCwd } from '../lib/termcwd'
@@ -116,6 +117,7 @@
     unsubs.push(
       on(`term:data:${id}`, (b64: string) => term.write(b64ToBytes(b64))),
       on(`term:exit:${id}`, (msg: string) => onExit(msg)),
+      on(`term:tmuxname:${id}`, (name: string) => onTmuxName(name)),
     )
     if (screen) term.write(screen)
     state = 'ready'
@@ -143,7 +145,9 @@
       unsubs.push(
         on(`term:data:${info.id}`, (b64: string) => term.write(b64ToBytes(b64))),
         on(`term:exit:${info.id}`, (msg: string) => onExit(msg)),
+        on(`term:tmuxname:${info.id}`, (name: string) => onTmuxName(name)),
       )
+      keepTmux(info)
       term.reset() // borra el "Conectando…" antes de recibir el banner
       await api.termAttach(info.id)
       state = 'ready'
@@ -168,6 +172,16 @@
     sessionId = null
     state = 'closed'
     patchTab(tab.id, { status: 'closed', sessionId: undefined, shared: false })
+    // Shell persistente sin texto: la sesión de tmux ya no existe (exit, o alguien la terminó).
+    // La pestaña queda con el aviso; reconectar no tendría a qué.
+    if (tab.tmux && !msg) {
+      term.write(`
+[33m● ${tr('term.tmuxEnded')}[0m
+`)
+      const c = $connections.find((x) => x.id === tab.connId)
+      if (c) refreshShells(c)
+      return
+    }
     // Sin texto, la shell terminó (exit, logout, Ctrl+D): se cierra la pestaña, como en Windows Terminal.
     // Embebida abajo del SFTP no es una pestaña: queda el aviso para abrir otra.
     if (!msg && !embedded) {
@@ -186,6 +200,16 @@
         ? `\r\n\x1b[33m● ${tr('term.ended')}\x1b[0m \x1b[90m${tr('term.pressOpenOther')}\x1b[0m\r\n`
         : `\r\n\x1b[33m● ${msg ? tr('term.closedMsg', { msg }) : tr('term.closed')}\x1b[0m \x1b[90m${tr('term.pressReconnect')}\x1b[0m\r\n`,
     )
+  }
+
+  // Shell persistente recién creada: desde ahora la pestaña apunta a esa sesión (reconectar no crea otra).
+  function keepTmux(info: SessionInfo) {
+    if (tab.tmux?.create && info.tmuxId) patchTab(tab.id, { label: info.title, tmux: { id: info.tmuxId, name: info.title } })
+  }
+
+  // Otro (u otro osat) renombró la shell persistente: la pestaña sigue al nombre nuevo.
+  function onTmuxName(name: string) {
+    if (tab.tmux) patchTab(tab.id, { label: name, tmux: { ...tab.tmux, name } })
   }
 
   // ---------- Reconexión automática (ver lib/reconnect.ts) ----------
@@ -225,7 +249,9 @@
     unsubs.push(
       on(`term:data:${info.id}`, (b64: string) => term.write(b64ToBytes(b64))),
       on(`term:exit:${info.id}`, (msg: string) => onExit(msg)),
+      on(`term:tmuxname:${info.id}`, (name: string) => onTmuxName(name)),
     )
+    keepTmux(info)
     // Sin term.reset(): el shell nuevo sigue debajo de lo que había.
     term.write(`\r\x1b[2K\x1b[90m${tr('term.reconnected')}\x1b[0m\r\n`)
     try {

@@ -42,6 +42,7 @@
     type Side,
   } from '../lib/layout'
   import { keys } from '../lib/platform'
+  import { renameTerminal } from '../lib/tmux'
 import { contextMenuAt, isMenuKey } from '../lib/treenav'
 
   // Barra de pestañas de un panel del mosaico.
@@ -71,7 +72,9 @@ import { contextMenuAt, isMenuKey } from '../lib/treenav'
 
   function endRename(save: boolean) {
     if (!renaming) return
-    if (save) patchTab(renaming, { label: draft.trim() || undefined })
+    const t = save ? $tabs.find((x) => x.id === renaming) : undefined
+    if (t) renameTerminal(t, draft) // en una shell persistente renombra la sesión de tmux
+
     renaming = null
   }
 

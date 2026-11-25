@@ -568,7 +568,8 @@
     "resourceNetDown": "Download",
     "resourceNetUp": "Upload",
     "resourceHide": "Hide the resource bar",
-    "resourceShow": "Show the resource bar"
+    "resourceShow": "Show the resource bar",
+    "tmuxEnded": "The persistent shell ended."
   },
   "snippets": {
     "loadError": "Couldn't read the snippets: {error}",
@@ -1413,5 +1414,31 @@
     "unified": "Unified",
     "noTextChanges": "There are no text differences (it may be a permissions or line-ending change).",
     "conflict": "In conflict: resolve it in a terminal."
+  },
+  "shells": {
+    "new": "New persistent shell…",
+    "newTitle": "New persistent shell",
+    "newMsg": "It keeps running on {server} even if you close the tab. Name:",
+    "create": "Create",
+    "refresh": "Refresh persistent shells",
+    "open": "Open",
+    "watch": "Watch only",
+    "rename": "Rename…",
+    "kill": "End shell…",
+    "killTitle": "End the persistent shell",
+    "killMsg": "\"{name}\" and everything running in it will be closed. This can't be undone.",
+    "killOwner": "Created by {owner}.",
+    "killManual": "It is a tmux session made by hand.",
+    "killInside": "People inside now: {count}.",
+    "killOk": "End",
+    "busyTitle": "Someone is in this shell",
+    "busyMsg": "People inside now: {count}. If you join, they see what you see and anyone can type.",
+    "busyEnter": "Join anyway",
+    "mine": "mine",
+    "manual": "tmux",
+    "inside": "People inside: {count}",
+    "stale": "List not refreshed: no tab is connected to this server.",
+    "tip": "Persistent shell: it keeps running on the server even if you close the tab. Last activity: {when}.",
+    "plainTip": "It has several windows or panes: it opens with tmux as is."
   }
 }

@@ -64,7 +64,7 @@ func init() {
 		"remote.tmuxMissing":                     {es: "el servidor no tiene tmux instalado (las shells persistentes lo necesitan)", en: "tmux is not installed on the server (persistent shells need it)"},
 		"remote.tmuxOld":                         {es: "el servidor tiene tmux %s; las shells persistentes necesitan tmux 3.0 o más nuevo", en: "the server has tmux %s; persistent shells need tmux 3.0 or newer"},
 		"remote.tmuxFailed":                      {es: "tmux: %s", en: "tmux: %s"},
-		"remote.tmuxEnded":                       {es: "la shell persistente terminó", en: "the persistent shell ended"},
+		"remote.tmuxDetached":                    {es: "te desconectaron de la shell persistente", en: "you were detached from the persistent shell"},
 		"remote.invalidRemoteFileNameQ":          {es: "nombre de archivo remoto inválido: %q", en: "invalid remote file name: %q"},
 		"remote.remotePathOutsideTheDownloaded":  {es: "ruta remota fuera de la carpeta descargada: %q", en: "remote path outside the downloaded folder: %q"},
 		"remote.theServerAskedForAdditional":     {es: "el servidor pidió datos adicionales y no hay a quién preguntarle", en: "the server asked for additional information and there is nobody to ask"},

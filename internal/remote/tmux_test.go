@@ -125,12 +125,12 @@ func TestTmuxCommands(t *testing.T) {
 		t.Fatalf("kill: %q", got)
 	}
 	got := tmuxCreateScript("web", []string{"A=b c"}, true)
-	want := `tmux new-session -d -P -F '#{session_id}' -s 'web' -e 'A=b c'`
+	want := `tmux new-session -d -P -F '#{session_id} #{session_name}' -s 'web' -e 'A=b c'`
 	if got != want {
 		t.Fatalf("create:\n%q\n%q", got, want)
 	}
 	// Sin -e (tmux < 3.2) las variables no se pasan; nombre vacío = tmux elige uno.
-	if got := tmuxCreateScript("", []string{"A=b"}, false); got != `tmux new-session -d -P -F '#{session_id}'` {
+	if got := tmuxCreateScript("", []string{"A=b"}, false); got != `tmux new-session -d -P -F '#{session_id} #{session_name}'` {
 		t.Fatalf("create sin nombre: %q", got)
 	}
 }

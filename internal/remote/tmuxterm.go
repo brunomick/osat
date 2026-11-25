@@ -27,6 +27,8 @@ type TmuxTarget struct {
 	Name     string `json:"name,omitempty"`     // para el título de la pestaña
 	ReadOnly bool   `json:"readOnly,omitempty"` // solo mirar
 	Plain    bool   `json:"plain,omitempty"`    // varias ventanas o paneles: tmux attach común
+	// Create: crearla (con Name) antes de conectarse; el id queda en SessionInfo.TmuxID.
+	Create bool `json:"create,omitempty"`
 }
 
 // tmuxHistory es cuántas líneas del historial se cargan al conectarse.
@@ -164,6 +166,13 @@ func (c *tmuxCtl) resize(cols, rows int) {
 // startTmux conecta una terminal a una shell persistente. Las de varias
 // ventanas o paneles (Plain) van por startShell con un tmux attach común.
 func (m *Manager) startTmux(sh *sharedClient, c store.Connection, t TmuxTarget, cols, rows int) (*Session, error) {
+	if t.Create {
+		id, name, err := tmuxCreate(sh.client, c, t.Name)
+		if err != nil {
+			return nil, err
+		}
+		t.ID, t.Name, t.Create, t.Plain, t.ReadOnly = id, name, false, false, false
+	}
 	if t.ID == "" || !strings.HasPrefix(t.ID, "$") {
 		return nil, i18n.Err("remote.tmuxFailed", "id")
 	}
@@ -173,7 +182,14 @@ func (m *Manager) startTmux(sh *sharedClient, c store.Connection, t TmuxTarget, 
 	}
 	attach += " -t " + shellQuote(t.ID)
 	if t.Plain {
-		return m.startShellCmd(sh, c, cols, rows, false, attach)
+		s, err := m.startShellCmd(sh, c, cols, rows, false, attach)
+		if err == nil {
+			s.tmuxID = t.ID
+			if t.Name != "" {
+				s.title = t.Name
+			}
+		}
+		return s, err
 	}
 	if cols <= 0 {
 		cols = 120
@@ -208,7 +224,7 @@ func (m *Manager) startTmux(sh *sharedClient, c store.Connection, t TmuxTarget, 
 		title = c.Name
 	}
 	s := &Session{ID: uuid.NewString(), Kind: KindTerminal, ConnID: c.ID, name: c.Name, shared: sh, ssh: sess,
-		ready: make(chan struct{}), screen: vt.New(cols, rows), title: title,
+		ready: make(chan struct{}), screen: vt.New(cols, rows), title: title, tmuxID: t.ID,
 		host: fmt.Sprintf("%s@%s:%d", c.User, c.Host, c.Port)}
 	dataEvt := "term:data:" + s.ID
 	logf := openSessionLog(currentOptions().LogDir, c.Name)
@@ -242,11 +258,20 @@ func (m *Manager) startTmux(sh *sharedClient, c store.Connection, t TmuxTarget, 
 		}
 		err := sess.Wait()
 		logf.Close()
+		// Sin texto, la sesión ya no existe (exit, o la terminó alguien): la pestaña
+		// lo avisa y no reintenta. Con texto, se cortó la conexión: reintenta.
 		msg := ""
 		if ctl.exited {
-			msg = i18n.T("remote.tmuxEnded")
+			// tmux avisa %exit tanto si la sesión terminó como si alguien nos desconectó.
+			if l, err := tmuxList(sh.client); err != nil {
+				msg = err.Error()
+			} else if tmuxHas(l.Sessions, t.ID) {
+				msg = i18n.T("remote.tmuxDetached")
+			}
 		} else if e := strings.TrimSpace(errOut.String()); e != "" {
-			msg = e // p. ej. "can't find session"
+			if !tmuxGone(e) {
+				msg = e
+			}
 		} else if err != nil {
 			var ee *ssh.ExitError
 			if !errors.As(err, &ee) {
@@ -274,4 +299,21 @@ func boolInt(b bool) int {
 func (c *tmuxCtl) Write(p []byte) (int, error) {
 	c.write(p)
 	return len(p), nil
+}
+
+func tmuxHas(list []TmuxSession, id string) bool {
+	for _, s := range list {
+		if s.ID == id {
+			return true
+		}
+	}
+	return false
+}
+
+// tmuxGone dice si el error de tmux attach es porque la sesión (o el servidor
+// de tmux) ya no existe.
+func tmuxGone(stderr string) bool {
+	low := strings.ToLower(stderr)
+	return strings.Contains(low, "can't find session") || strings.Contains(low, "no server running") ||
+		strings.Contains(low, "no sessions") || strings.Contains(low, "error connecting to")
 }

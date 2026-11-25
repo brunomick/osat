@@ -568,7 +568,8 @@
     "resourceNetDown": "Bajada",
     "resourceNetUp": "Subida",
     "resourceHide": "Ocultar la barra de recursos",
-    "resourceShow": "Mostrar la barra de recursos"
+    "resourceShow": "Mostrar la barra de recursos",
+    "tmuxEnded": "La shell persistente terminó."
   },
   "snippets": {
     "loadError": "No se pudieron leer los snippets: {error}",
@@ -1413,5 +1414,31 @@
     "unified": "Unificado",
     "noTextChanges": "No hay diferencias en el texto (puede ser un cambio de permisos o de finales de línea).",
     "conflict": "En conflicto: resolvelo en una terminal."
+  },
+  "shells": {
+    "new": "Nueva shell persistente…",
+    "newTitle": "Nueva shell persistente",
+    "newMsg": "Sigue corriendo en {server} aunque cierres la pestaña. Nombre:",
+    "create": "Crear",
+    "refresh": "Actualizar shells persistentes",
+    "open": "Abrir",
+    "watch": "Solo mirar",
+    "rename": "Renombrar…",
+    "kill": "Terminar shell…",
+    "killTitle": "Terminar la shell persistente",
+    "killMsg": "Se cierra «{name}» y todo lo que esté corriendo en ella. No se puede deshacer.",
+    "killOwner": "La creó {owner}.",
+    "killManual": "Es una sesión de tmux armada a mano.",
+    "killInside": "Gente adentro ahora: {count}.",
+    "killOk": "Terminar",
+    "busyTitle": "Hay alguien en esta shell",
+    "busyMsg": "Gente adentro ahora: {count}. Si entrás, ven lo mismo que vos y cualquiera puede escribir.",
+    "busyEnter": "Entrar igual",
+    "mine": "mía",
+    "manual": "tmux",
+    "inside": "Gente adentro: {count}",
+    "stale": "Lista sin actualizar: no hay ninguna pestaña conectada a este servidor.",
+    "tip": "Shell persistente: sigue corriendo en el servidor aunque cierres la pestaña. Última actividad: {when}.",
+    "plainTip": "Tiene varias ventanas o paneles: se abre con tmux tal cual."
   }
 }

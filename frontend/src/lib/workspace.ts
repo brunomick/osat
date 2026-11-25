@@ -1,4 +1,4 @@
-import type { Connection } from './api'
+import type { Connection, TmuxTarget } from './api'
 import type { LayoutNode, PlainLayout } from './layout'
 import { tr } from './i18n'
 import { legacyTitle, tabTitle } from './tabtitle'
@@ -26,6 +26,8 @@ export interface SavedTab {
   path?: string
   url?: string
   siteId?: string
+  /** Shell persistente: al abrir se conecta a la misma sesión de tmux. */
+  tmux?: TmuxTarget
 }
 
 export interface WorkspaceData {
@@ -106,6 +108,8 @@ export function snapshot(tabs: Tab[], layout: LayoutNode): WorkspaceData {
         const v = t[k]
         if (v) s[k] = v
       }
+      // Una que se está creando todavía no tiene id: se guarda como terminal común.
+      if (t.tmux?.id) s.tmux = savedTmux(t.tmux)
       saved.push(s)
     }
   }
@@ -135,7 +139,14 @@ function readTab(x: unknown): SavedTab | null {
     const v = str(x[k])
     if (v) t[k] = v
   }
+  const tm = x.tmux
+  if (isObj(tm) && typeof tm.id === 'string' && tm.id.startsWith('$') && typeof tm.name === 'string') t.tmux = savedTmux(tm as unknown as TmuxTarget)
   return t
+}
+
+/** Lo que se guarda de una shell persistente (create nunca: ya existe). */
+function savedTmux(t: TmuxTarget): TmuxTarget {
+  return { id: t.id, name: t.name, ...(t.readOnly ? { readOnly: true } : {}), ...(t.plain ? { plain: true } : {}) }
 }
 
 function readLayout(x: unknown, depth = 0): PlainLayout | null {
@@ -205,6 +216,7 @@ export function restore(data: unknown, connections: Connection[]): Restored | nu
       path: t.path,
       url: t.url,
       siteId: t.siteId,
+      tmux: t.tmux,
     })
   }
   return withOmitted({ tabs, layout: prunePlain(layout, new Set(tabs.map((t) => t.ref))), skipped })

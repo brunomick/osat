@@ -1,5 +1,5 @@
 import { get } from 'svelte/store'
-import { api, codedText, parseError, type OsatError, type SessionInfo } from './api'
+import { api, codedText, parseError, type Connection, type ConnectRequest, type OsatError, type SessionInfo } from './api'
 import { askSecret, confirmDialog } from './dialog'
 import { tr } from './i18n'
 import { isMongo } from './protocol'
@@ -34,7 +34,7 @@ export async function connectTab(tab: Tab, cols = 120, rows = 32, opts: ConnectO
   // Una de MongoDB no tiene conexión SSH que reutilizar: cada pestaña abre su mongosh.
   if (tab.fromSession && !isMongo(conn)) {
     try {
-      if (tab.kind === 'terminal') return await api.openTerminalFrom(tab.fromSession, cols, rows)
+      if (tab.kind === 'terminal') return await api.openTerminalFrom(tab.fromSession, cols, rows, tab.tmux)
       return tab.kind === 'ports' ? await api.openTunnelFrom(tab.fromSession) : await api.openSFTPFrom(tab.fromSession)
     } catch {
       // La sesión origen pudo cerrarse: seguimos con una conexión nueva.
@@ -43,6 +43,26 @@ export async function connectTab(tab: Tab, cols = 120, rows = 32, opts: ConnectO
 
   if (!conn) throw interactive ? new Error(tr('connect.gone')) : new NeedsUserError(tr('connect.gone'))
 
+  return connectWith(conn, opts, (req) =>
+    isMongo(conn)
+      ? api.openMongoShell(req)
+      : tab.kind === 'terminal'
+        ? api.openTerminal(tab.tmux ? { ...req, tmux: tab.tmux } : req)
+        : tab.kind === 'ports'
+          ? api.openTunnel(req)
+          : api.openSFTP(req),
+    cols,
+    rows,
+  )
+}
+
+/**
+ * Llama a `open` con el pedido de conexión a `conn`, preguntando lo que haga
+ * falta (contraseña, huella, saltos) y reintentando. También la usa la barra
+ * lateral para listar las shells persistentes de un servidor sin abrir pestaña.
+ */
+export async function connectWith<T>(conn: Connection, opts: ConnectOptions, open: (req: ConnectRequest) => Promise<T>, cols = 120, rows = 32): Promise<T> {
+  const interactive = opts.interactive ?? true
   let secret = ''
   let saveSecret = false
   let acceptAfterForget = ''
@@ -52,7 +72,7 @@ export async function connectTab(tab: Tab, cols = 120, rows = 32, opts: ConnectO
   // Con saltos hay una ronda de huella y contraseña por cada uno.
   for (let attempt = 0; attempt < 12; attempt++) {
     try {
-      const req = {
+      const req: ConnectRequest = {
         connectionId: conn.id,
         secret,
         saveSecret,
@@ -62,14 +82,7 @@ export async function connectTab(tab: Tab, cols = 120, rows = 32, opts: ConnectO
         ...(interactive ? {} : { noPrompt: true }),
         ...(opts.reconnect ? { reconnect: true } : {}),
       }
-      const info =
-        isMongo(conn)
-          ? await api.openMongoShell(req)
-          : tab.kind === 'terminal'
-            ? await api.openTerminal(req)
-            : tab.kind === 'ports'
-              ? await api.openTunnel(req)
-              : await api.openSFTP(req)
+      const info = await open(req)
       if (saveSecret || Object.values(jumpSecrets).some((j) => j.save)) reloadConnections()
       return info
     } catch (e) {

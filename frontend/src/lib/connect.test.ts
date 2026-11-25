@@ -148,7 +148,7 @@ describe('connectTab', () => {
     it('con fromSession reutiliza esa conexión', async () => {
       m.openTerminalFrom.mockResolvedValue(info)
       await connectTab(tab({ fromSession: 'sess-1' }), 80, 24)
-      expect(m.openTerminalFrom).toHaveBeenCalledWith('sess-1', 80, 24)
+      expect(m.openTerminalFrom).toHaveBeenCalledWith('sess-1', 80, 24, undefined)
       expect(m.openTerminal).not.toHaveBeenCalled()
     })
 

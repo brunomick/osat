@@ -369,6 +369,44 @@ export interface ConnectRequest {
   noPrompt?: boolean
   /** La terminal reconecta sobre lo que ya hay en pantalla: el arranque limpio no la borra. */
   reconnect?: boolean
+  /** La terminal se conecta a esta shell persistente (tmux) en vez de abrir una shell nueva. */
+  tmux?: TmuxTarget
+}
+
+/** Shell persistente a la que se conecta una terminal (ver internal/remote/tmuxterm.go). */
+export interface TmuxTarget {
+  /** Id de la sesión de tmux ($N): no cambia aunque se renombre. */
+  id: string
+  name: string
+  /** Solo mirar: no se puede escribir ni cambia el tamaño de la sesión. */
+  readOnly?: boolean
+  /** Varias ventanas o paneles (armada a mano): se abre con un tmux attach común. */
+  plain?: boolean
+  /** Crearla (con `name`) al conectarse; el id llega en SessionInfo.tmuxId. */
+  create?: boolean
+}
+
+/** Una sesión de tmux del servidor (ver internal/remote/tmux.go). */
+export interface TmuxSession {
+  id: string
+  name: string
+  /** Clientes conectados, de cualquiera (también las pestañas de este osat). */
+  attached: number
+  /** Última actividad, en segundos Unix. */
+  activity: number
+  windows: number
+  panes: number
+  /** usuario@equipo de quien la creó desde osat; vacío si se armó a mano. */
+  owner: string
+}
+
+export interface TmuxList {
+  version: string
+  /** Se puede entrar a solo mirar (tmux 3.1 o más nuevo). */
+  readOnly: boolean
+  /** El dueño que pone este osat (usuario@equipo): las sesiones "mías". */
+  me: string
+  sessions: TmuxSession[]
 }
 
 /** Recursos del servidor de una terminal SSH a Linux (ver internal/remote/stats.go). */
@@ -391,6 +429,8 @@ export interface SessionInfo {
   connId: string
   title: string
   home?: string
+  /** Shell persistente: la sesión de tmux (la recién creada, si se pidió crearla). */
+  tmuxId?: string
 }
 
 /** Reenvío de puerto guardado: un puerto de esta PC (solo loopback) que llega a un puerto del servidor
@@ -761,8 +801,15 @@ export const api = {
     app().OpenLocalTerminal(shell, dir, cols, rows),
   openSFTP: (r: ConnectRequest): Promise<SessionInfo> => app().OpenSFTP(r),
   openSFTPFrom: (sid: string): Promise<SessionInfo> => app().OpenSFTPFrom(sid),
-  openTerminalFrom: (sid: string, cols: number, rows: number): Promise<SessionInfo> =>
-    app().OpenTerminalFrom(sid, cols, rows),
+  openTerminalFrom: (sid: string, cols: number, rows: number, tmux?: TmuxTarget): Promise<SessionInfo> =>
+    app().OpenTerminalFrom(sid, cols, rows, tmux ?? null),
+  /** Shells persistentes del servidor, por la conexión de una pestaña abierta (sid). */
+  tmuxSessions: (sid: string): Promise<TmuxList> => app().TmuxSessions(sid),
+  /** Igual, pero conecta, lista y cierra (no hay ninguna pestaña abierta con ese servidor). */
+  tmuxSessionsDial: (r: ConnectRequest): Promise<TmuxList> => app().TmuxSessionsDial(r),
+  /** Devuelve el nombre que quedó (tmux cambia . y : por _). */
+  tmuxRename: (sid: string, id: string, name: string): Promise<string> => app().TmuxRename(sid, id, name),
+  tmuxKill: (sid: string, id: string): Promise<void> => app().TmuxKill(sid, id),
   closeSession: (id: string): Promise<void> => app().CloseSession(id),
 
   termAttach: (id: string): Promise<void> => app().TermAttach(id),

@@ -1,5 +1,5 @@
 import { writable, derived, get } from 'svelte/store'
-import { api, errorText, type BridgeStatus, type Connection, type Cred, type LocalShell, type Settings, type Site, type Transfer } from './api'
+import { api, errorText, type BridgeStatus, type Connection, type Cred, type LocalShell, type Settings, type Site, type TmuxTarget, type Transfer } from './api'
 import { confirmDialog } from './dialog'
 import { locale, resolveLanguage, tr, type Locale } from './i18n'
 import { migrateDefaultShell } from './defaultshell'
@@ -74,6 +74,8 @@ export interface Tab {
   initialDir?: string
   /** Para terminales de este equipo (connId LOCAL): id de la shell (powershell, cmd, wsl, gitbash...). */
   shell?: string
+  /** Terminal conectada a una shell persistente (tmux) del servidor: sobrevive a que se cierre la pestaña. */
+  tmux?: TmuxTarget
   /** Terminal compartida con Claude Code (puede leerla y escribir en ella). Vale solo para la sesión actual. */
   shared?: boolean
   /** Para SFTP y "Este equipo": carpeta que se está mostrando (la usa la barra lateral).

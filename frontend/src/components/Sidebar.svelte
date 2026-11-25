@@ -8,8 +8,10 @@
   import LogoMark from '../lib/LogoMark.svelte'
   import ContextMenu, { type MenuItem } from './ContextMenu.svelte'
   import ConnRow from './ConnRow.svelte'
-  import { api, errorText, type Connection, type NamedWorkspace, type PinnedDir, type Site } from '../lib/api'
-  import { confirmDialog, promptDialog, questionsDialog } from '../lib/dialog'
+  import { api, errorText, type Connection, type NamedWorkspace, type PinnedDir, type Site, type TmuxSession } from '../lib/api'
+  import { choiceDialog, confirmDialog, promptDialog, questionsDialog } from '../lib/dialog'
+  import { protocolOf } from '../lib/protocol'
+  import { liveSession, nextShellName, othersInside, ownerKind, refreshConnected, refreshShells, renameTerminal, shellsByConn, shellTab, sortShells } from '../lib/tmux'
   import { overlayHolder } from '../lib/overlay'
   import { filterSites, placeBeforeId } from '../lib/sites'
   import { normalizeSiteUrl, siteHost } from '../lib/siteUrl'
@@ -26,6 +28,7 @@
   } from '../lib/workspaces'
   import {
     activeTabId,
+    openTab,
     browserSupported,
     exportGroup,
     closeTab,
@@ -173,7 +176,115 @@
   // Terminal abierta (local o remota): renombrarla, igual que desde su pestaña.
   async function renameTerm(t: Tab, list: Tab[]) {
     const name = await promptDialog({ title: tr('tabs.rename'), message: tr('tabs.renameTip'), value: tabLabel(t, list, tr), okText: tr('common.save') })
-    if (name !== null) patchTab(t.id, { label: name.trim() || undefined })
+    if (name !== null) renameTerminal(t, name)
+  }
+
+  // ---------- shells persistentes (tmux, ver lib/tmux.ts) ----------
+  // Debajo de cada servidor, sus shells persistentes que no están abiertas acá (las abiertas ya figuran como pestañas).
+  $: shellRows = (id: string): TmuxSession[] => {
+    const list = $shellsByConn[id]?.list
+    if (!list) return []
+    const open = new Set($tabs.flatMap((t) => (t.connId === id && t.tmux ? [t.tmux.id] : [])))
+    return sortShells(list.sessions.filter((x) => !open.has(x.id)))
+  }
+
+  // Al conectarse a un servidor se listan enseguida; al desconectarse, la lista queda como vieja.
+  let shellConns = new Set<string>()
+  $: {
+    const changed = [...openConnIds].filter((id) => !shellConns.has(id)).concat([...shellConns].filter((id) => !openConnIds.has(id)))
+    shellConns = new Set(openConnIds)
+    for (const id of changed) {
+      const c = $connections.find((x) => x.id === id)
+      if (c && protocolOf(c) === 'ssh') refreshShells(c)
+    }
+  }
+  // Y cada 30 s mientras haya alguna pestaña conectada.
+  onMount(() => {
+    const timer = setInterval(refreshConnected, 30_000)
+    return () => clearInterval(timer)
+  })
+
+  function ownerText(x: TmuxSession, me: string, tf: typeof tr) {
+    const k = ownerKind(x, me)
+    return k === 'mine' ? tf('shells.mine') : k === 'manual' ? tf('shells.manual') : x.owner
+  }
+
+  async function newShell(c: Connection) {
+    const name = await promptDialog({
+      title: tr('shells.newTitle'),
+      message: tr('shells.newMsg', { server: c.name }),
+      value: nextShellName(c.name, $shellsByConn[c.id]?.list?.sessions ?? []),
+      okText: tr('shells.create'),
+    })
+    if (name === null) return
+    const n = name.trim() || nextShellName(c.name, $shellsByConn[c.id]?.list?.sessions ?? [])
+    openTab({ kind: 'terminal', connId: c.id, title: c.name, label: n, color: c.color, tmux: { id: '', name: n, create: true }, fromSession: liveSession(c.id) })
+  }
+
+  async function openShell(c: Connection, x: TmuxSession, readOnly = false) {
+    const others = othersInside(x, c.id, $tabs)
+    if (!readOnly && others > 0) {
+      const choice = await choiceDialog({
+        title: tr('shells.busyTitle'),
+        message: tr('shells.busyMsg', { count: others }),
+        choices: [
+          { value: 'enter', label: tr('shells.busyEnter'), kind: 'primary' },
+          ...($shellsByConn[c.id]?.list?.readOnly ? [{ value: 'watch', label: tr('shells.watch') }] : []),
+        ],
+      })
+      if (!choice) return
+      readOnly = choice === 'watch'
+    }
+    openTab(shellTab(c, x, readOnly))
+  }
+
+  async function renameShell(c: Connection, x: TmuxSession) {
+    const sid = liveSession(c.id)
+    if (!sid) return
+    const name = await promptDialog({ title: tr('tabs.rename'), message: c.name, value: x.name, okText: tr('common.save') })
+    if (name === null || !name.trim() || name.trim() === x.name) return
+    await run(async () => {
+      await api.tmuxRename(sid, x.id, name.trim())
+    })
+    refreshShells(c)
+  }
+
+  async function killShell(c: Connection, x: TmuxSession, sid = liveSession(c.id)) {
+    if (!sid) return
+    const kind = ownerKind(x, $shellsByConn[c.id]?.list?.me ?? '')
+    const others = othersInside(x, c.id, $tabs)
+    const msg = [tr('shells.killMsg', { name: x.name })]
+    if (kind === 'other') msg.push(tr('shells.killOwner', { owner: x.owner }))
+    if (kind === 'manual') msg.push(tr('shells.killManual'))
+    if (others > 0) msg.push(tr('shells.killInside', { count: others }))
+    if (!(await confirmDialog({ title: tr('shells.killTitle'), message: msg.join(' '), okText: tr('shells.killOk'), danger: true }))) return
+    await run(() => api.tmuxKill(sid, x.id))
+    refreshShells(c)
+  }
+
+  function persistentMenu(e: MouseEvent, c: Connection, x: TmuxSession) {
+    e.preventDefault()
+    e.stopPropagation()
+    const live = !!liveSession(c.id)
+    menu = {
+      x: e.clientX,
+      y: e.clientY,
+      items: [
+        { label: tr('shells.open'), icon: 'terminal', action: () => openShell(c, x) },
+        ...($shellsByConn[c.id]?.list?.readOnly ? [{ label: tr('shells.watch'), icon: 'eye', action: () => openShell(c, x, true) }] : []),
+        { label: tr('shells.rename'), icon: 'edit', disabled: !live, action: () => renameShell(c, x) },
+        { separator: true, label: '' },
+        { label: tr('shells.kill'), icon: 'trash', danger: true, disabled: !live, action: () => killShell(c, x) },
+      ],
+    }
+  }
+
+  // Terminar la shell persistente de una pestaña abierta (por su propia conexión).
+  function killTabShell(t: Tab) {
+    const c = $connections.find((x) => x.id === t.connId)
+    if (!c || !t.tmux || !t.sessionId) return
+    const known = $shellsByConn[c.id]?.list?.sessions.find((x) => x.id === t.tmux?.id)
+    killShell(c, known ?? { id: t.tmux.id, name: t.tmux.name, attached: 1, activity: 0, windows: 1, panes: 1, owner: $shellsByConn[c.id]?.list?.me ?? '' }, t.sessionId)
   }
 
   function termMenu(e: MouseEvent, t: Tab, list: Tab[]) {
@@ -186,9 +297,10 @@
       items: [
         { label: tr('tabs.rename'), icon: 'edit', action: () => renameTerm(t, list) },
         ...(localTermDir(t) !== null ? [{ label: tr('tabs.browseHere'), icon: 'folder', action: () => openPinnedDir(localTermDir(t) ?? '') }] : []),
-        ...(t.label ? [{ label: tr('tabs.originalName'), icon: 'refresh', action: () => patchTab(t.id, { label: undefined }) }] : []),
+        ...(t.label && !t.tmux ? [{ label: tr('tabs.originalName'), icon: 'refresh', action: () => patchTab(t.id, { label: undefined }) }] : []),
         { separator: true, label: '' },
         { label: tr('common.close'), icon: 'x', action: () => closeTab(t.id) },
+        ...(t.tmux && t.sessionId ? [{ label: tr('shells.kill'), icon: 'trash', danger: true, action: () => killTabShell(t) }] : []),
       ],
     }
   }
@@ -461,6 +573,13 @@
         x: e.clientX,
         y: e.clientY,
         items: [
+          ...(protocolOf(c) === 'ssh'
+            ? [
+                { label: tr('shells.new'), icon: 'terminal', action: () => newShell(c) },
+                { label: tr('shells.refresh'), icon: 'refresh', action: () => refreshShells(c, true) },
+                { separator: true, label: '' },
+              ]
+            : []),
           { label: c.favorite ? tr('sidebar.unfavorite') : tr('sidebar.favorite'), icon: 'star', action: () => run(() => api.setFavorite(c.id, !c.favorite)) },
           { separator: true, label: '' },
           { label: tr('sidebar.removeConn'), icon: 'trash', danger: true, action: () => removeConnection(c) },
@@ -914,7 +1033,7 @@
             on:keydown={(e) => e.key === 'Enter' && openSftpAt(c, p.path)}
           >
             <span class="guides">{#each Array(r.depth) as _}<span class="guide" />{/each}</span>
-            <span class="branch">{branch(i, (c.pins?.length ?? 0) + (tabsByConn[c.id]?.length ?? 0))}</span>
+            <span class="branch">{branch(i, (c.pins?.length ?? 0) + (tabsByConn[c.id]?.length ?? 0) + shellRows(c.id).length)}</span>
             <Icon name="pin" size={12} filled />
             <span class="label">{p.name || dirLabel(p.path)}</span>
             <button class="icon close" tabindex="-1" title={$tl('sidebar.unpinFolder')} on:click|stopPropagation={() => unpin(c, p)} aria-label={$tl('sidebar.unpinFolder')}>
@@ -942,7 +1061,7 @@
             on:contextmenu={(e) => termMenu(e, t, list)}
           >
             <span class="guides">{#each Array(r.depth) as _}<span class="guide" />{/each}</span>
-            <span class="branch">{branch(np + i, np + list.length)}</span>
+            <span class="branch">{branch(np + i, np + list.length + shellRows(c.id).length)}</span>
             <Icon name={kindIcon[t.kind]} size={12} />
             <span class="label" class:mono={t.kind === 'sftp' || t.kind === 'local'}>{tabLabel(t, list, $tl)}</span>
             {#if t.kind === 'ports' && t.forwarding}
@@ -951,6 +1070,36 @@
             <button class="icon close" tabindex="-1" title={$tl('sidebar.closeTab')} on:click|stopPropagation={() => closeTab(t.id)} aria-label={$tl('sidebar.closeTab')}>
               <Icon name="x" size={11} />
             </button>
+          </div>
+        {/each}
+        {#each shellRows(c.id) as x, i (x.id)}
+          {@const before = (c.pins?.length ?? 0) + (tabsByConn[c.id]?.length ?? 0)}
+          {@const st = $shellsByConn[c.id]}
+          {@const others = othersInside(x, c.id, $tabs)}
+          <div
+            class="subtab shell"
+            class:down={st?.stale}
+            role="treeitem"
+            aria-level={r.depth + 2}
+            aria-selected="false"
+            tabindex="-1"
+            style="--d: {r.depth}"
+            title={(x.windows > 1 || x.panes > 1 ? $tl('shells.plainTip') + ' ' : '') +
+              $tl('shells.tip', { when: new Date(x.activity * 1000).toLocaleString() }) +
+              (st?.stale ? ' ' + $tl('shells.stale') : '')}
+            data-drop-group={c.group}
+            on:click={() => openShell(c, x)}
+            on:keydown={(e) => e.key === 'Enter' && openShell(c, x)}
+            on:contextmenu={(e) => persistentMenu(e, c, x)}
+          >
+            <span class="guides">{#each Array(r.depth) as _}<span class="guide" />{/each}</span>
+            <span class="branch">{branch(before + i, before + shellRows(c.id).length)}</span>
+            <Icon name="terminal" size={12} />
+            <span class="label">{x.name}</span>
+            <span class="owner">{ownerText(x, st?.list?.me ?? '', $tl)}</span>
+            {#if others > 0}
+              <span class="live" title={$tl('shells.inside', { count: others })}>{others}</span>
+            {/if}
           </div>
         {/each}
       {/if}
@@ -1024,7 +1173,7 @@
     background: var(--bg);
     border: 1px solid var(--border);
     padding: 0 8px;
-    color: var(--text-3);
+    color: var(--text-2);
   }
   .search input {
     border: 0;
@@ -1058,7 +1207,7 @@
     margin-top: 4px;
   }
   .subtab.add {
-    color: var(--text-3);
+    color: var(--text-2);
   }
   .divider {
     flex: none;
@@ -1142,7 +1291,7 @@
   .sitehead .icon {
     margin-left: 6px;
     padding: 0 3px;
-    color: var(--text-3);
+    color: var(--text-2);
   }
   .sitehead .icon:hover {
     color: var(--text);
@@ -1173,7 +1322,7 @@
     margin: 8px 10px 0;
     padding: 6px 8px;
     border: 1px dashed var(--border);
-    color: var(--text-3);
+    color: var(--text-2);
     font-size: 11px;
   }
   .ghost {
@@ -1242,6 +1391,12 @@
     text-overflow: ellipsis;
   }
   /* Puertos: cuántos reenvíos andan (verde). */
+  .shell .owner {
+    flex: none;
+    margin-left: 6px;
+    font-size: 10px;
+    color: var(--text-3);
+  }
   .live {
     flex: none;
     margin-left: 6px;
@@ -1265,7 +1420,7 @@
   }
   .empty {
     padding: 24px 12px;
-    color: var(--text-3);
+    color: var(--text-2);
     text-align: center;
     display: flex;
     flex-direction: column;
