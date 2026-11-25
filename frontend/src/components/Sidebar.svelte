@@ -1062,7 +1062,7 @@
           >
             <span class="guides">{#each Array(r.depth) as _}<span class="guide" />{/each}</span>
             <span class="branch">{branch(np + i, np + list.length + shellRows(c.id).length)}</span>
-            <Icon name={kindIcon[t.kind]} size={12} />
+            <Icon name={t.tmux ? 'shell' : kindIcon[t.kind]} size={12} />
             <span class="label" class:mono={t.kind === 'sftp' || t.kind === 'local'}>{tabLabel(t, list, $tl)}</span>
             {#if t.kind === 'ports' && t.forwarding}
               <span class="live" title={$tl('sidebar.activeForwards')}>{t.forwarding}</span>
@@ -1094,7 +1094,7 @@
           >
             <span class="guides">{#each Array(r.depth) as _}<span class="guide" />{/each}</span>
             <span class="branch">{branch(before + i, before + shellRows(c.id).length)}</span>
-            <Icon name="terminal" size={12} />
+            <Icon name="shell" size={12} />
             <span class="label">{x.name}</span>
             <span class="owner">{ownerText(x, st?.list?.me ?? '', $tl)}</span>
             {#if others > 0}

@@ -8,6 +8,8 @@
   // 2px y puntas cuadradas, como las letras del logo.
   const paths: Record<string, string> = {
     terminal: 'M4 17l6-6-6-6M12 19h8',
+    // Shell persistente: la terminal en su caja, sigue viva aunque se cierre la pestaña.
+    shell: 'M3 4h18v16H3zM7 9l3 3-3 3M12 16h5',
     folder: 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z',
     file: 'M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zM14 3v6h6',
     plus: 'M12 5v14M5 12h14',
