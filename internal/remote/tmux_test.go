@@ -1,6 +1,7 @@
 package remote
 
 import (
+	"encoding/json"
 	"reflect"
 	"strings"
 	"testing"
@@ -154,5 +155,17 @@ func TestParseTmuxList(t *testing.T) {
 	}
 	if _, err := parseTmuxList("tmux 2.7\n"); err == nil {
 		t.Fatal("tmux 2.7 must be rejected")
+	}
+}
+
+// Sin sesiones (tmux se cierra al terminar la última) la lista va como [] y no
+// como null: el frontend la recorre con filter y un null lo dejaba trabado.
+func TestTmuxListSinSesionesEsVacia(t *testing.T) {
+	b, err := json.Marshal(TmuxList{Version: "tmux 3.4", Sessions: parseTmuxSessions("")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(b), `"sessions":[]`) {
+		t.Fatalf("sessions debería ser [], quedó: %s", b)
 	}
 }

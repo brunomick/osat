@@ -45,7 +45,7 @@ const tmuxListFormat = "#{session_id}|#{session_attached}|#{session_activity}|#{
 // parseTmuxSessions lee la salida de list-sessions con tmuxListFormat. Las
 // líneas que no tienen la forma esperada se ignoran.
 func parseTmuxSessions(out string) []TmuxSession {
-	var list []TmuxSession
+	list := []TmuxSession{} // vacía y no nil: va al frontend como [], no null
 	for _, line := range strings.Split(out, "\n") {
 		f := strings.SplitN(strings.TrimRight(line, "\r"), "|", 7)
 		if len(f) != 7 || !strings.HasPrefix(f[0], "$") {
