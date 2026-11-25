@@ -7,14 +7,14 @@ import (
 )
 
 func TestParseTmuxSessions(t *testing.T) {
-	out := "$1\tmanual\t0\t1795615635\t1\t2\t\n" +
-		"$0\tmi shell\t2\t1795615600\t1\t1\tbruno@PC\n" +
+	out := "$1|0|1795615635|1|2||manual\n" +
+		"$0|2|1795615600|1|1|bruno@PC|mi | shell\n" +
 		"\n" +
-		"basura sin tabs\n"
+		"basura sin separadores\n"
 	got := parseTmuxSessions(out)
 	want := []TmuxSession{
 		{ID: "$1", Name: "manual", Attached: 0, Activity: 1795615635, Windows: 1, Panes: 2},
-		{ID: "$0", Name: "mi shell", Attached: 2, Activity: 1795615600, Windows: 1, Panes: 1, Owner: "bruno@PC"},
+		{ID: "$0", Name: "mi | shell", Attached: 2, Activity: 1795615600, Windows: 1, Panes: 1, Owner: "bruno@PC"},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %+v\nwant %+v", got, want)
@@ -115,7 +115,7 @@ func TestControlParserBlocksAndNotifications(t *testing.T) {
 }
 
 func TestTmuxCommands(t *testing.T) {
-	if got := tmuxListScript(); !strings.HasPrefix(got, "command -v tmux >/dev/null 2>&1 || exit 127; tmux -V; tmux list-sessions -F '#{session_id}\t") || !strings.HasSuffix(got, "' 2>/dev/null; exit 0") {
+	if got := tmuxListScript(); !strings.HasPrefix(got, "command -v tmux >/dev/null 2>&1 || exit 127; tmux -V; tmux list-sessions -F '#{session_id}|") || !strings.HasSuffix(got, "' 2>/dev/null; exit 0") {
 		t.Fatalf("list: %q", got)
 	}
 	if got := tmuxRenameScript("$3", "it's mine"); got != `tmux rename-session -t '$3' -- 'it'\''s mine' && tmux display-message -p -t '$3' '#{session_name}'` {
@@ -125,12 +125,12 @@ func TestTmuxCommands(t *testing.T) {
 		t.Fatalf("kill: %q", got)
 	}
 	got := tmuxCreateScript("web", []string{"A=b c"}, true)
-	want := `tmux new-session -d -P -F '` + tmuxListFormat + `' -s 'web' -e 'A=b c'`
+	want := `tmux new-session -d -P -F '#{session_id}' -s 'web' -e 'A=b c'`
 	if got != want {
 		t.Fatalf("create:\n%q\n%q", got, want)
 	}
 	// Sin -e (tmux < 3.2) las variables no se pasan; nombre vacío = tmux elige uno.
-	if got := tmuxCreateScript("", []string{"A=b"}, false); got != `tmux new-session -d -P -F '`+tmuxListFormat+`'` {
+	if got := tmuxCreateScript("", []string{"A=b"}, false); got != `tmux new-session -d -P -F '#{session_id}'` {
 		t.Fatalf("create sin nombre: %q", got)
 	}
 }
@@ -145,7 +145,7 @@ func TestTmuxOwner(t *testing.T) {
 }
 
 func TestParseTmuxList(t *testing.T) {
-	l, err := parseTmuxList("tmux 3.0a\n$0\tweb\t1\t5\t1\t1\tbruno@PC\n")
+	l, err := parseTmuxList("tmux 3.0a\n$0|1|5|1|1|bruno@PC|web\n")
 	if err != nil || l.Version != "3.0a" || l.ReadOnly || len(l.Sessions) != 1 {
 		t.Fatalf("got %+v %v", l, err)
 	}

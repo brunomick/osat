@@ -414,8 +414,8 @@ func (a *App) OpenSFTPFrom(sessionID string) (remote.SessionInfo, error) {
 	return a.mgr.OpenSFTPFrom(sessionID)
 }
 
-func (a *App) OpenTerminalFrom(sessionID string, cols, rows int) (remote.SessionInfo, error) {
-	return a.mgr.OpenTerminalFrom(sessionID, cols, rows)
+func (a *App) OpenTerminalFrom(sessionID string, cols, rows int, tmux *remote.TmuxTarget) (remote.SessionInfo, error) {
+	return a.mgr.OpenTerminalFrom(sessionID, cols, rows, tmux)
 }
 
 // OpenMongoShell abre mongosh (el instalado en esta PC) conectado a una conexión MongoDB.

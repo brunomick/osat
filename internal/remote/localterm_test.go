@@ -89,7 +89,7 @@ func TestLocalSessionsCannotBeReusedAsRemote(t *testing.T) {
 	if _, err := m.OpenSFTPFrom("x"); err == nil {
 		t.Fatal("abrir SFTP desde una terminal local debería fallar, no entrar en pánico")
 	}
-	if _, err := m.OpenTerminalFrom("x", 80, 24); err == nil {
+	if _, err := m.OpenTerminalFrom("x", 80, 24, nil); err == nil {
 		t.Fatal("abrir una terminal remota desde una local debería fallar")
 	}
 	m.Close("x") // sin conexión compartida: no debe fallar

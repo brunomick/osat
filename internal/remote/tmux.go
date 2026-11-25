@@ -36,23 +36,24 @@ type TmuxSession struct {
 	Owner    string `json:"owner"` // @osat_owner; vacío si no la creó osat
 }
 
-// tmuxListFormat es el formato de list-sessions y new-session -P: un campo por
-// tab, en el orden que espera parseTmuxSessions.
-const tmuxListFormat = "#{session_id}\t#{session_name}\t#{session_attached}\t#{session_activity}\t#{session_windows}\t#{window_panes}\t#{@osat_owner}"
+// tmuxListFormat es el formato de list-sessions, en el orden que espera
+// parseTmuxSessions. Los campos van separados por | y no por tab: sin terminal,
+// tmux cambia los tabs por _. El nombre va último porque puede tener |.
+const tmuxListFormat = "#{session_id}|#{session_attached}|#{session_activity}|#{session_windows}|#{window_panes}|#{@osat_owner}|#{session_name}"
 
 // parseTmuxSessions lee la salida de list-sessions con tmuxListFormat. Las
 // líneas que no tienen la forma esperada se ignoran.
 func parseTmuxSessions(out string) []TmuxSession {
 	var list []TmuxSession
 	for _, line := range strings.Split(out, "\n") {
-		f := strings.Split(strings.TrimRight(line, "\r"), "\t")
+		f := strings.SplitN(strings.TrimRight(line, "\r"), "|", 7)
 		if len(f) != 7 || !strings.HasPrefix(f[0], "$") {
 			continue
 		}
 		num := func(s string) int { n, _ := strconv.Atoi(s); return n }
-		act, _ := strconv.ParseInt(f[3], 10, 64)
-		list = append(list, TmuxSession{ID: f[0], Name: f[1], Attached: num(f[2]), Activity: act,
-			Windows: num(f[4]), Panes: num(f[5]), Owner: f[6]})
+		act, _ := strconv.ParseInt(f[2], 10, 64)
+		list = append(list, TmuxSession{ID: f[0], Name: f[6], Attached: num(f[1]), Activity: act,
+			Windows: num(f[3]), Panes: num(f[4]), Owner: f[5]})
 	}
 	return list
 }
@@ -196,11 +197,11 @@ func tmuxListScript() string {
 	return "command -v tmux >/dev/null 2>&1 || exit 127; tmux -V; tmux list-sessions -F " + shellQuote(tmuxListFormat) + " 2>/dev/null; exit 0"
 }
 
-// tmuxCreateScript crea una sesión sin conectarse a ella e imprime su línea en
-// tmuxListFormat. Sin nombre, tmux elige uno. Las variables de la conexión van
+// tmuxCreateScript crea una sesión sin conectarse a ella e imprime su id (con
+// -P, tmux cambia los tabs por _: el resto se lee después de la lista). Sin nombre, tmux elige uno. Las variables de la conexión van
 // con -e solo si tmux lo admite (3.2 o más nuevo).
 func tmuxCreateScript(name string, env []string, withEnv bool) string {
-	s := "tmux new-session -d -P -F " + shellQuote(tmuxListFormat)
+	s := "tmux new-session -d -P -F '#{session_id}'"
 	if name != "" {
 		s += " -s " + shellQuote(name)
 	}
@@ -225,6 +226,8 @@ func tmuxOwnerFrom(username, host string) string {
 	if i := strings.LastIndexAny(username, `\/`); i >= 0 {
 		username = username[i+1:] // en Windows viene como DOMINIO\usuario
 	}
+	// | separa los campos de la lista (ver tmuxListFormat).
+	username, host = strings.ReplaceAll(username, "|", ""), strings.ReplaceAll(host, "|", "")
 	switch {
 	case username != "" && host != "":
 		return username + "@" + host
@@ -343,20 +346,28 @@ func (m *Manager) TmuxCreate(sessionID, name string) (TmuxSession, error) {
 		if err != nil {
 			return err
 		}
-		list := parseTmuxSessions(out)
-		if len(list) == 0 {
-			return i18n.Err("remote.tmuxFailed", strings.TrimSpace(out))
+		ts.ID = strings.TrimSpace(out)
+		if !strings.HasPrefix(ts.ID, "$") {
+			return i18n.Err("remote.tmuxFailed", ts.ID)
 		}
-		ts = list[0]
 		ts.Owner = tmuxOwner()
 		id := shellQuote(ts.ID)
 		if _, err := tmuxExec(c, "tmux set-option -t "+id+" @osat_owner "+shellQuote(ts.Owner)); err != nil {
 			return err
 		}
 		if conn.InitialCommand != "" {
-			_, err = tmuxExec(c, "tmux send-keys -t "+id+" -l -- "+shellQuote(conn.InitialCommand)+" && tmux send-keys -t "+id+" Enter")
+			if _, err := tmuxExec(c, "tmux send-keys -t "+id+" -l -- "+shellQuote(conn.InitialCommand)+" && tmux send-keys -t "+id+" Enter"); err != nil {
+				return err
+			}
 		}
-		return err
+		if l, err := tmuxList(c); err == nil {
+			for _, x := range l.Sessions {
+				if x.ID == ts.ID {
+					ts = x
+				}
+			}
+		}
+		return nil
 	})
 	return ts, err
 }

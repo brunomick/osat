@@ -160,6 +160,8 @@ type Session struct {
 
 	noShell atomic.Bool // el servidor no deja ejecutar comandos (ver Copy)
 
+	tmux *tmuxCtl // shell persistente en modo control (ver tmuxterm.go); las teclas y el tamaño van por acá
+
 	capsMu sync.Mutex
 	caps   *findCaps  // qué hay en el servidor para buscar archivos, una vez por sesión (ver search.go)
 	stats  statsState // última muestra de recursos del servidor (ver stats.go)
@@ -193,6 +195,8 @@ type ConnectRequest struct {
 	// Reconnect: la terminal reconecta sobre lo que ya había en pantalla, así
 	// que el arranque limpio no la borra (ver cleanStart.keepScreen).
 	Reconnect bool `json:"reconnect,omitempty"`
+	// Tmux: la terminal se conecta a una shell persistente en vez de abrir una shell nueva.
+	Tmux *TmuxTarget `json:"tmux,omitempty"`
 }
 
 // JumpSecret es la contraseña (o passphrase) de un salto y si hay que guardarla.
@@ -396,16 +400,27 @@ func (m *Manager) OpenTerminal(req ConnectRequest) (SessionInfo, error) {
 		return SessionInfo{}, err
 	}
 	sh := newSharedClient(client)
-	s, err := m.startShell(sh, c, req.Cols, req.Rows, req.Reconnect)
+	var s *Session
+	if req.Tmux != nil {
+		s, err = m.startTmux(sh, c, *req.Tmux, req.Cols, req.Rows)
+	} else {
+		s, err = m.startShell(sh, c, req.Cols, req.Rows, req.Reconnect)
+	}
 	if err != nil {
 		sh.release()
 		return SessionInfo{}, err
 	}
-	return SessionInfo{ID: s.ID, Kind: KindTerminal, ConnID: c.ID, Title: c.Name}, nil
+	return SessionInfo{ID: s.ID, Kind: KindTerminal, ConnID: c.ID, Title: s.title}, nil
 }
 
 // reconnect: la terminal ya tiene algo en pantalla y no se borra (ver ConnectRequest.Reconnect).
 func (m *Manager) startShell(sh *sharedClient, c store.Connection, cols, rows int, reconnect bool) (*Session, error) {
+	return m.startShellCmd(sh, c, cols, rows, reconnect, "")
+}
+
+// startShellCmd: con cmd, corre ese comando en el pty en vez de la shell (sin
+// arranque limpio ni comando inicial); lo usa tmux attach (ver startTmux).
+func (m *Manager) startShellCmd(sh *sharedClient, c store.Connection, cols, rows int, reconnect bool, cmd string) (*Session, error) {
 	if cols <= 0 {
 		cols = 120
 	}
@@ -461,7 +476,12 @@ func (m *Manager) startShell(sh *sharedClient, c store.Connection, cols, rows in
 		sess.Close()
 		return nil, err
 	}
-	if err := sess.Shell(); err != nil {
+	if cmd != "" {
+		err = sess.Start(cmd)
+	} else {
+		err = sess.Shell()
+	}
+	if err != nil {
 		sess.Close()
 		return nil, err
 	}
@@ -482,14 +502,14 @@ func (m *Manager) startShell(sh *sharedClient, c store.Connection, cols, rows in
 	// El comando inicial se escribe cuando termina el arranque limpio, para que
 	// no se mezcle con él; los avisos van entre el borrado y el prompt.
 	writeCommand := func() {
-		if c.InitialCommand != "" {
+		if c.InitialCommand != "" && cmd == "" {
 			_, _ = io.WriteString(stdin, c.InitialCommand+"\r")
 		}
 	}
 	// Arranque limpio: sin el MOTD ni el "Last login" del servidor y con el
 	// mismo prompt en todos (ver cleanstart.go). Si no se puede, sale todo tal cual.
 	var clean *cleanStart
-	if cleanStartEnabled(string(sh.client.ServerVersion())) {
+	if cmd == "" && cleanStartEnabled(string(sh.client.ServerVersion())) {
 		if _, err := io.WriteString(stdin, cleanStartInput); err == nil {
 			clean = newCleanStart(send)
 			clean.keepScreen = reconnect
@@ -598,7 +618,8 @@ func (m *Manager) OpenSFTPFrom(sessionID string) (SessionInfo, error) {
 }
 
 // OpenTerminalFrom abre otra terminal sobre la conexión de una sesión existente.
-func (m *Manager) OpenTerminalFrom(sessionID string, cols, rows int) (SessionInfo, error) {
+// Con tmux, se conecta a esa shell persistente (ver ConnectRequest.Tmux).
+func (m *Manager) OpenTerminalFrom(sessionID string, cols, rows int, tmux *TmuxTarget) (SessionInfo, error) {
 	src, err := m.get(sessionID)
 	if err != nil {
 		return SessionInfo{}, err
@@ -610,12 +631,17 @@ func (m *Manager) OpenTerminalFrom(sessionID string, cols, rows int) (SessionInf
 	if err := src.shared.acquire(); err != nil {
 		return SessionInfo{}, err
 	}
-	s, err := m.startShell(src.shared, c, cols, rows, false)
+	var s *Session
+	if tmux != nil {
+		s, err = m.startTmux(src.shared, c, *tmux, cols, rows)
+	} else {
+		s, err = m.startShell(src.shared, c, cols, rows, false)
+	}
 	if err != nil {
 		src.shared.release()
 		return SessionInfo{}, err
 	}
-	return SessionInfo{ID: s.ID, Kind: KindTerminal, ConnID: c.ID, Title: c.Name}, nil
+	return SessionInfo{ID: s.ID, Kind: KindTerminal, ConnID: c.ID, Title: s.title}, nil
 }
 
 func (m *Manager) startSFTP(sh *sharedClient, c store.Connection) (SessionInfo, error) {
@@ -675,6 +701,10 @@ func (m *Manager) Resize(id string, cols, rows int) error {
 	}
 	if s.local != nil {
 		return s.local.Resize(cols, rows)
+	}
+	if s.tmux != nil {
+		s.tmux.resize(cols, rows)
+		return nil
 	}
 	if s.ssh == nil {
 		return nil
