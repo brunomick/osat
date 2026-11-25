@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { TmuxSession } from './api'
-import { nextShellName, othersInside, ownerKind, sortShells } from './tmux'
+import { mineBySession, nextShellName, othersInside, ownerKind, sortShells } from './tmux'
 
 const s = (over: Partial<TmuxSession>): TmuxSession => ({ id: '$0', name: 'x', attached: 0, activity: 0, windows: 1, panes: 1, owner: '', ...over })
 
@@ -19,8 +19,18 @@ describe('shells persistentes', () => {
       { connId: 'c2', status: 'ready', tmux: { id: '$3', name: 'a' } },
       { connId: 'c1', status: 'ready' },
     ] as const
-    expect(othersInside(s({ id: '$3', attached: 3 }), 'c1', tabs)).toBe(1)
-    expect(othersInside(s({ id: '$3', attached: 1 }), 'c1', tabs)).toBe(0) // la lista pudo quedar vieja
+    const mine = mineBySession('c1', tabs)
+    expect(mine).toEqual({ $3: 2 })
+    expect(othersInside(s({ id: '$3', attached: 3 }), mine)).toBe(1)
+    expect(othersInside(s({ id: '$3', attached: 1 }), mine)).toBe(0) // la lista pudo quedar vieja
+    expect(othersInside(s({ id: '$3', attached: 1 }), undefined)).toBe(1)
+  })
+
+  it('una pestaña que cerré después de leer la lista no cuenta como otra persona', () => {
+    // Al leer la lista mi pestaña estaba adentro: tmux decía 1 cliente, el mío.
+    const mine = mineBySession('c1', [{ connId: 'c1', status: 'ready', tmux: { id: '$3', name: 'a' } }])
+    // Después la cerré: ya no está entre mis pestañas, pero la lista sigue diciendo 1.
+    expect(othersInside(s({ id: '$3', attached: 1 }), mine)).toBe(0)
   })
 
   it('ordena por actividad, la más reciente primero', () => {

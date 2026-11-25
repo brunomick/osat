@@ -222,7 +222,7 @@
   }
 
   async function openShell(c: Connection, x: TmuxSession, readOnly = false) {
-    const others = othersInside(x, c.id, $tabs)
+    const others = othersInside(x, $shellsByConn[c.id]?.mine)
     if (!readOnly && others > 0) {
       const choice = await choiceDialog({
         title: tr('shells.busyTitle'),
@@ -252,7 +252,7 @@
   async function killShell(c: Connection, x: TmuxSession, sid = liveSession(c.id)) {
     if (!sid) return
     const kind = ownerKind(x, $shellsByConn[c.id]?.list?.me ?? '')
-    const others = othersInside(x, c.id, $tabs)
+    const others = othersInside(x, $shellsByConn[c.id]?.mine)
     const msg = [tr('shells.killMsg', { name: x.name })]
     if (kind === 'other') msg.push(tr('shells.killOwner', { owner: x.owner }))
     if (kind === 'manual') msg.push(tr('shells.killManual'))
@@ -1075,7 +1075,7 @@
         {#each shellRows(c.id) as x, i (x.id)}
           {@const before = (c.pins?.length ?? 0) + (tabsByConn[c.id]?.length ?? 0)}
           {@const st = $shellsByConn[c.id]}
-          {@const others = othersInside(x, c.id, $tabs)}
+          {@const others = othersInside(x, $shellsByConn[c.id]?.mine)}
           <div
             class="subtab shell"
             class:down={st?.stale}

@@ -16,10 +16,20 @@ export function ownerKind(s: TmuxSession, me: string): OwnerKind {
   return s.owner === me ? 'mine' : 'other'
 }
 
-/** Gente adentro además de mí: los clientes de tmux menos mis pestañas conectadas a esa sesión. */
-export function othersInside(s: TmuxSession, connId: string, list: readonly Pick<Tab, 'connId' | 'status' | 'tmux'>[]): number {
-  const mine = list.filter((t) => t.connId === connId && t.status === 'ready' && t.tmux?.id === s.id).length
-  return Math.max(0, s.attached - mine)
+/** Mis pestañas conectadas a cada sesión de tmux de ese servidor (por id de sesión). */
+export function mineBySession(connId: string, list: readonly Pick<Tab, 'connId' | 'status' | 'tmux'>[]): Record<string, number> {
+  const out: Record<string, number> = {}
+  for (const t of list) if (t.connId === connId && t.status === 'ready' && t.tmux?.id) out[t.tmux.id] = (out[t.tmux.id] ?? 0) + 1
+  return out
+}
+
+/**
+ * Gente adentro además de mí: los clientes de tmux menos mis pestañas, las dos
+ * cosas contadas al leer la lista. Con mis pestañas de ahora, una que cerré
+ * después de leerla se contaría como otra persona.
+ */
+export function othersInside(s: TmuxSession, mine: Record<string, number> | undefined): number {
+  return Math.max(0, s.attached - (mine?.[s.id] ?? 0))
 }
 
 export const sortShells = (list: TmuxSession[]) => [...list].sort((a, b) => b.activity - a.activity)
@@ -36,6 +46,8 @@ export function nextShellName(connName: string, list: TmuxSession[]): string {
 /** Lo que se sabe de las shells de cada servidor (por id de conexión). */
 export interface ShellsState {
   list?: TmuxList
+  /** Mis pestañas en cada sesión cuando se leyó `list` (ver othersInside). */
+  mine?: Record<string, number>
   /** El servidor no tiene tmux (o es muy viejo): no se muestra nada. */
   unavailable?: string
   /** No hay conexión abierta: la lista es la última conocida. */
@@ -65,7 +77,7 @@ export async function refreshShells(c: Connection, dial = false): Promise<void> 
   patch(c.id, { loading: true })
   try {
     const list = sid ? await api.tmuxSessions(sid) : await connectWith(c, {}, (req) => api.tmuxSessionsDial(req))
-    patch(c.id, { list, stale: !sid, unavailable: undefined, loading: false })
+    patch(c.id, { list, mine: mineBySession(c.id, get(tabs)), stale: !sid, unavailable: undefined, loading: false })
   } catch (e) {
     const msg = errorText(e)
     // Sin tmux o con uno viejo no hay nada que mostrar; los demás errores (red) dejan la lista como estaba.
