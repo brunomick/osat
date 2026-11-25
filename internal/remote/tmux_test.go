@@ -113,3 +113,46 @@ func TestControlParserBlocksAndNotifications(t *testing.T) {
 		t.Fatalf("notes %q", notes)
 	}
 }
+
+func TestTmuxCommands(t *testing.T) {
+	if got := tmuxListScript(); !strings.HasPrefix(got, "command -v tmux >/dev/null 2>&1 || exit 127; tmux -V; tmux list-sessions -F '#{session_id}\t") || !strings.HasSuffix(got, "' 2>/dev/null; exit 0") {
+		t.Fatalf("list: %q", got)
+	}
+	if got := tmuxRenameScript("$3", "it's mine"); got != `tmux rename-session -t '$3' -- 'it'\''s mine' && tmux display-message -p -t '$3' '#{session_name}'` {
+		t.Fatalf("rename: %q", got)
+	}
+	if got := tmuxKillScript("$3"); got != `tmux kill-session -t '$3'` {
+		t.Fatalf("kill: %q", got)
+	}
+	got := tmuxCreateScript("web", []string{"A=b c"}, true)
+	want := `tmux new-session -d -P -F '` + tmuxListFormat + `' -s 'web' -e 'A=b c'`
+	if got != want {
+		t.Fatalf("create:\n%q\n%q", got, want)
+	}
+	// Sin -e (tmux < 3.2) las variables no se pasan; nombre vacío = tmux elige uno.
+	if got := tmuxCreateScript("", []string{"A=b"}, false); got != `tmux new-session -d -P -F '`+tmuxListFormat+`'` {
+		t.Fatalf("create sin nombre: %q", got)
+	}
+}
+
+func TestTmuxOwner(t *testing.T) {
+	if got := tmuxOwnerFrom(`DOMINIO\bruno.mick`, "PC-BRUNO"); got != "bruno.mick@PC-BRUNO" {
+		t.Fatalf("got %q", got)
+	}
+	if got := tmuxOwnerFrom("", ""); got != "osat" {
+		t.Fatalf("got %q", got)
+	}
+}
+
+func TestParseTmuxList(t *testing.T) {
+	l, err := parseTmuxList("tmux 3.0a\n$0\tweb\t1\t5\t1\t1\tbruno@PC\n")
+	if err != nil || l.Version != "3.0a" || l.ReadOnly || len(l.Sessions) != 1 {
+		t.Fatalf("got %+v %v", l, err)
+	}
+	if l, _ := parseTmuxList("tmux 3.4\n"); !l.ReadOnly || len(l.Sessions) != 0 {
+		t.Fatalf("got %+v", l)
+	}
+	if _, err := parseTmuxList("tmux 2.7\n"); err == nil {
+		t.Fatal("tmux 2.7 must be rejected")
+	}
+}

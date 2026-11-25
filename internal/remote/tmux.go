@@ -2,9 +2,17 @@ package remote
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
+	"os"
+	"os/user"
 	"strconv"
 	"strings"
+	"time"
+
+	"golang.org/x/crypto/ssh"
+
+	"osat/internal/i18n"
 )
 
 // Shells persistentes: sesiones de tmux en el servidor que sobreviven a que se
@@ -19,7 +27,7 @@ import (
 
 // TmuxSession es una sesión de tmux del servidor, como la ve la barra lateral.
 type TmuxSession struct {
-	ID       string `json:"id"`       // $N
+	ID       string `json:"id"` // $N
 	Name     string `json:"name"`
 	Attached int    `json:"attached"` // clientes conectados (de cualquiera)
 	Activity int64  `json:"activity"` // última actividad, en segundos Unix
@@ -162,4 +170,212 @@ func (p *controlParser) feed(line []byte) {
 	if p.onNote != nil {
 		p.onNote(string(name), args)
 	}
+}
+
+// TmuxList es lo que hay de tmux en un servidor.
+type TmuxList struct {
+	Version  string        `json:"version"`  // "3.4"
+	ReadOnly bool          `json:"readOnly"` // se puede entrar a solo mirar (tmux 3.1 o más nuevo)
+	Sessions []TmuxSession `json:"sessions"`
+}
+
+const tmuxTimeout = 10 * time.Second
+
+var errTmuxMissing = i18n.Err("remote.tmuxMissing")
+
+// tmuxAtLeast dice si la versión de tmux es major.minor o más nueva. Una que no
+// trae número ("master") se toma como nueva.
+func tmuxAtLeast(version string, major, minor int) bool {
+	ma, mi, ok := parseTmuxVersion("tmux " + version)
+	return !ok || ma > major || (ma == major && mi >= minor)
+}
+
+// tmuxListScript imprime la versión y después las sesiones. Sin servidor de
+// tmux corriendo (ninguna sesión) list-sessions falla: es una lista vacía.
+func tmuxListScript() string {
+	return "command -v tmux >/dev/null 2>&1 || exit 127; tmux -V; tmux list-sessions -F " + shellQuote(tmuxListFormat) + " 2>/dev/null; exit 0"
+}
+
+// tmuxCreateScript crea una sesión sin conectarse a ella e imprime su línea en
+// tmuxListFormat. Sin nombre, tmux elige uno. Las variables de la conexión van
+// con -e solo si tmux lo admite (3.2 o más nuevo).
+func tmuxCreateScript(name string, env []string, withEnv bool) string {
+	s := "tmux new-session -d -P -F " + shellQuote(tmuxListFormat)
+	if name != "" {
+		s += " -s " + shellQuote(name)
+	}
+	if withEnv {
+		for _, e := range env {
+			s += " -e " + shellQuote(e)
+		}
+	}
+	return s
+}
+
+// tmuxRenameScript renombra e imprime el nombre que quedó (tmux cambia . y :).
+func tmuxRenameScript(id, name string) string {
+	return "tmux rename-session -t " + shellQuote(id) + " -- " + shellQuote(name) +
+		" && tmux display-message -p -t " + shellQuote(id) + " '#{session_name}'"
+}
+
+func tmuxKillScript(id string) string { return "tmux kill-session -t " + shellQuote(id) }
+
+// tmuxOwnerFrom arma el dueño que se guarda en @osat_owner: usuario@equipo.
+func tmuxOwnerFrom(username, host string) string {
+	if i := strings.LastIndexAny(username, `\/`); i >= 0 {
+		username = username[i+1:] // en Windows viene como DOMINIO\usuario
+	}
+	switch {
+	case username != "" && host != "":
+		return username + "@" + host
+	case username != "":
+		return username
+	case host != "":
+		return host
+	}
+	return "osat"
+}
+
+func tmuxOwner() string {
+	name := ""
+	if u, err := user.Current(); err == nil {
+		name = u.Username
+	}
+	host, _ := os.Hostname()
+	return tmuxOwnerFrom(name, host)
+}
+
+// parseTmuxList lee la salida de tmuxListScript.
+func parseTmuxList(out string) (TmuxList, error) {
+	first, rest, _ := strings.Cut(out, "\n")
+	version := strings.TrimPrefix(strings.TrimSpace(first), "tmux ")
+	if !tmuxAtLeast(version, 3, 0) {
+		return TmuxList{}, i18n.Err("remote.tmuxOld", version)
+	}
+	return TmuxList{Version: version, ReadOnly: tmuxAtLeast(version, 3, 1), Sessions: parseTmuxSessions(rest)}, nil
+}
+
+// tmuxExec corre un script de sh en un canal aparte y devuelve lo que imprimió.
+// Si tmux no está instalado, errTmuxMissing; si falla, la primera línea de su error.
+func tmuxExec(c *ssh.Client, script string) (string, error) {
+	sess, err := c.NewSession()
+	if err != nil {
+		return "", err
+	}
+	defer sess.Close()
+	var out, errOut limitedBuffer
+	out.max, errOut.max = statsMaxOutput, 4<<10
+	sess.Stdout, sess.Stderr = &out, &errOut
+	if err := sess.Start("sh -c " + shellQuote(script)); err != nil {
+		return "", err
+	}
+	done := make(chan error, 1)
+	go func() { done <- sess.Wait() }()
+	timer := time.NewTimer(tmuxTimeout)
+	defer timer.Stop()
+	select {
+	case err = <-done:
+	case <-timer.C:
+		_ = sess.Close()
+		return "", i18n.Err("remote.tmuxFailed", "timeout")
+	}
+	if err != nil {
+		var ee *ssh.ExitError
+		if errors.As(err, &ee) {
+			if ee.ExitStatus() == 127 {
+				return "", errTmuxMissing
+			}
+			msg, _, _ := strings.Cut(strings.TrimSpace(errOut.String()), "\n")
+			if msg == "" {
+				msg = err.Error()
+			}
+			return "", i18n.Err("remote.tmuxFailed", msg)
+		}
+		return "", err
+	}
+	return out.String(), nil
+}
+
+func tmuxList(c *ssh.Client) (TmuxList, error) {
+	out, err := tmuxExec(c, tmuxListScript())
+	if err != nil {
+		return TmuxList{}, err
+	}
+	return parseTmuxList(out)
+}
+
+// TmuxSessions lista las sesiones de tmux por la conexión de una pestaña abierta.
+func (m *Manager) TmuxSessions(sessionID string) (TmuxList, error) {
+	var l TmuxList
+	err := m.withClient(sessionID, func(c *ssh.Client) (err error) {
+		l, err = tmuxList(c)
+		return err
+	})
+	return l, err
+}
+
+// TmuxSessionsDial conecta, lista y cierra: el botón Actualizar de la barra
+// lateral cuando no hay ninguna pestaña abierta con ese servidor.
+func (m *Manager) TmuxSessionsDial(req ConnectRequest) (TmuxList, error) {
+	client, _, err := m.dial(req)
+	if err != nil {
+		return TmuxList{}, err
+	}
+	defer client.Close()
+	return tmuxList(client)
+}
+
+// TmuxCreate crea una shell persistente (sin abrirla) con el dueño y el
+// comando inicial de la conexión.
+func (m *Manager) TmuxCreate(sessionID, name string) (TmuxSession, error) {
+	s, err := m.get(sessionID)
+	if err != nil {
+		return TmuxSession{}, err
+	}
+	conn, _ := m.store.Get(s.ConnID)
+	var ts TmuxSession
+	err = m.withClient(sessionID, func(c *ssh.Client) error {
+		l, err := tmuxList(c)
+		if err != nil {
+			return err
+		}
+		out, err := tmuxExec(c, tmuxCreateScript(strings.TrimSpace(name), conn.Env, tmuxAtLeast(l.Version, 3, 2)))
+		if err != nil {
+			return err
+		}
+		list := parseTmuxSessions(out)
+		if len(list) == 0 {
+			return i18n.Err("remote.tmuxFailed", strings.TrimSpace(out))
+		}
+		ts = list[0]
+		ts.Owner = tmuxOwner()
+		id := shellQuote(ts.ID)
+		if _, err := tmuxExec(c, "tmux set-option -t "+id+" @osat_owner "+shellQuote(ts.Owner)); err != nil {
+			return err
+		}
+		if conn.InitialCommand != "" {
+			_, err = tmuxExec(c, "tmux send-keys -t "+id+" -l -- "+shellQuote(conn.InitialCommand)+" && tmux send-keys -t "+id+" Enter")
+		}
+		return err
+	})
+	return ts, err
+}
+
+// TmuxRename renombra una sesión y devuelve el nombre que quedó.
+func (m *Manager) TmuxRename(sessionID, id, name string) (string, error) {
+	var got string
+	err := m.withClient(sessionID, func(c *ssh.Client) error {
+		out, err := tmuxExec(c, tmuxRenameScript(id, name))
+		got = strings.TrimSpace(out)
+		return err
+	})
+	return got, err
+}
+
+// TmuxKill termina una sesión (y todo lo que corre en ella).
+func (m *Manager) TmuxKill(sessionID, id string) error {
+	return m.withClient(sessionID, func(c *ssh.Client) error {
+		_, err := tmuxExec(c, tmuxKillScript(id))
+		return err
+	})
 }

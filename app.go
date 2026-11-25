@@ -921,3 +921,25 @@ func (a *App) RdpSaveSecret(connectionID, secret string) error {
 }
 
 func (a *App) RdpClose(id string) { a.rdp.Close(id) }
+
+// ---------- Shells persistentes (tmux) ----------
+
+func (a *App) TmuxSessions(sessionID string) (remote.TmuxList, error) {
+	return a.mgr.TmuxSessions(sessionID)
+}
+
+func (a *App) TmuxSessionsDial(req remote.ConnectRequest) (remote.TmuxList, error) {
+	return a.mgr.TmuxSessionsDial(req)
+}
+
+func (a *App) TmuxCreate(sessionID, name string) (remote.TmuxSession, error) {
+	return a.mgr.TmuxCreate(sessionID, name)
+}
+
+func (a *App) TmuxRename(sessionID, id, name string) (string, error) {
+	return a.mgr.TmuxRename(sessionID, id, name)
+}
+
+func (a *App) TmuxKill(sessionID, id string) error {
+	return a.mgr.TmuxKill(sessionID, id)
+}
