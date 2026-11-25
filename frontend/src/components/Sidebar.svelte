@@ -1096,9 +1096,6 @@
             <span class="kind" class:running={!st?.stale}><Icon name="shell" size={12} /></span>
             <span class="label">{x.name}</span>
             <span class="owner">{ownerText(x, st?.list?.me ?? '', $tl)}</span>
-            {#if st?.stale}
-              <span class="stale" title={$tl('shells.stale')}><Icon name="refresh" size={11} /></span>
-            {/if}
             {#if others > 0}
               <span class="live" title={$tl('shells.inside', { count: others })}>{others}</span>
             {/if}
@@ -1399,13 +1396,6 @@
   }
   .kind.running {
     color: var(--success);
-  }
-  /* Sin conexión con el servidor: la lista puede estar vieja. */
-  .shell .stale {
-    display: inline-flex;
-    flex: none;
-    margin-left: 6px;
-    color: var(--danger);
   }
   .shell .owner {
     flex: none;
