@@ -23,6 +23,7 @@ const (
 	CodeServerGone      = "SERVER_GONE"      // se cortó la conexión con el servidor: el frontend reconecta y reintenta
 	CodeGateway         = "GATEWAY"          // falló un paso del RD Gateway (data: step, kind, reason, code...)
 	CodeRdpServer       = "RDP_SERVER"       // falló un paso con el servidor RDP después del TCP (data.kind: x224, negotiation, tls)
+	CodeTmux            = "TMUX"             // tmux no está, es viejo o la shell persistente no existe: no tiene sentido reintentar
 
 	// Editar como root (ver sudo.go).
 	CodePermission      = "PERMISSION"        // permiso denegado al leer o guardar por SFTP: el frontend ofrece sudo

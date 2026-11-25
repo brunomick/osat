@@ -36,8 +36,11 @@ export async function connectTab(tab: Tab, cols = 120, rows = 32, opts: ConnectO
     try {
       if (tab.kind === 'terminal') return await api.openTerminalFrom(tab.fromSession, cols, rows, tab.tmux)
       return tab.kind === 'ports' ? await api.openTunnelFrom(tab.fromSession) : await api.openSFTPFrom(tab.fromSession)
-    } catch {
-      // La sesión origen pudo cerrarse: seguimos con una conexión nueva.
+    } catch (e) {
+      // La sesión origen pudo cerrarse: seguimos con una conexión nueva. Pero no si
+      // el problema es tmux (no está, la shell ya no existe), que se repetiría, ni
+      // si la pestaña estaba creando su shell: podría quedar creada y se crearía otra.
+      if (tab.tmux?.create || parseError(e)?.code === 'TMUX') throw e
     }
   }
 
@@ -91,7 +94,7 @@ export async function connectWith<T>(conn: Connection, opts: ConnectOptions, ope
       const d = ke.data ?? {}
       // Sin diálogos: lo que hay que preguntar o confirmar queda para el usuario.
       // CONN_GONE: el backend ya no tiene la conexión o la de su salto; reintentar no la va a traer.
-      if (!interactive && ['NEED_SECRET', 'AUTH_FAILED', 'HOSTKEY_UNKNOWN', 'HOSTKEY_MISMATCH', 'CONN_GONE'].includes(ke.code)) {
+      if (!interactive && ['NEED_SECRET', 'AUTH_FAILED', 'HOSTKEY_UNKNOWN', 'HOSTKEY_MISMATCH', 'CONN_GONE', 'TMUX'].includes(ke.code)) {
         throw new NeedsUserError(codedText(ke))
       }
 

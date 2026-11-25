@@ -142,13 +142,15 @@ type controlParser struct {
 
 	inBlock bool
 	ours    bool
+	block   string // "hora número" del %begin: el %end que cierra es el que lo repite
 	lines   []string
 }
 
 func (p *controlParser) feed(line []byte) {
 	line = bytes.TrimSuffix(line, []byte("\r"))
 	if p.inBlock {
-		if bytes.HasPrefix(line, []byte("%end ")) || bytes.HasPrefix(line, []byte("%error ")) {
+		// Una línea de la pantalla capturada puede empezar con "%end ": cierra solo la que repite el %begin.
+		if f := bytes.Fields(line); len(f) >= 3 && (string(f[0]) == "%end" || string(f[0]) == "%error") && string(f[1])+" "+string(f[2]) == p.block {
 			p.inBlock = false
 			if p.ours && p.onReply != nil {
 				p.onReply(controlReply{lines: p.lines, err: bytes.HasPrefix(line, []byte("%error "))})
@@ -163,6 +165,10 @@ func (p *controlParser) feed(line []byte) {
 		f := bytes.Fields(line)
 		p.inBlock = true
 		p.ours = len(f) >= 4 && !bytes.Equal(f[3], []byte("0"))
+		p.block = ""
+		if len(f) >= 3 {
+			p.block = string(f[1]) + " " + string(f[2])
+		}
 		return
 	}
 	if len(line) < 2 || line[0] != '%' {
@@ -184,7 +190,9 @@ type TmuxList struct {
 
 const tmuxTimeout = 10 * time.Second
 
-var errTmuxMissing = i18n.Err("remote.tmuxMissing")
+// tmuxErr es un error de tmux en el servidor (no está, es viejo, la sesión no
+// existe...): con el código TMUX, el frontend no reintenta.
+func tmuxErr(key string, args ...any) error { return newErr(CodeTmux, i18n.T(key, args...), nil) }
 
 // tmuxAtLeast dice si la versión de tmux es major.minor o más nueva. Una que no
 // trae número ("master") se toma como nueva.
@@ -255,13 +263,13 @@ func parseTmuxList(out string) (TmuxList, error) {
 	first, rest, _ := strings.Cut(out, "\n")
 	version := strings.TrimPrefix(strings.TrimSpace(first), "tmux ")
 	if !tmuxAtLeast(version, 3, 0) {
-		return TmuxList{}, i18n.Err("remote.tmuxOld", version)
+		return TmuxList{}, tmuxErr("remote.tmuxOld", version)
 	}
 	return TmuxList{Version: version, ReadOnly: tmuxAtLeast(version, 3, 1), Me: tmuxOwner(), Sessions: parseTmuxSessions(rest)}, nil
 }
 
 // tmuxExec corre un script de sh en un canal aparte y devuelve lo que imprimió.
-// Si tmux no está instalado, errTmuxMissing; si falla, la primera línea de su error.
+// Si tmux no está instalado, un error TMUX (ver tmuxErr); si falla, la primera línea de su error.
 func tmuxExec(c *ssh.Client, script string) (string, error) {
 	sess, err := c.NewSession()
 	if err != nil {
@@ -282,19 +290,19 @@ func tmuxExec(c *ssh.Client, script string) (string, error) {
 	case err = <-done:
 	case <-timer.C:
 		_ = sess.Close()
-		return "", i18n.Err("remote.tmuxFailed", "timeout")
+		return "", tmuxErr("remote.tmuxFailed", "timeout")
 	}
 	if err != nil {
 		var ee *ssh.ExitError
 		if errors.As(err, &ee) {
 			if ee.ExitStatus() == 127 {
-				return "", errTmuxMissing
+				return "", tmuxErr("remote.tmuxMissing")
 			}
 			msg, _, _ := strings.Cut(strings.TrimSpace(errOut.String()), "\n")
 			if msg == "" {
 				msg = err.Error()
 			}
-			return "", i18n.Err("remote.tmuxFailed", msg)
+			return "", tmuxErr("remote.tmuxFailed", msg)
 		}
 		return "", err
 	}
@@ -343,7 +351,7 @@ func tmuxCreate(c *ssh.Client, conn store.Connection, name string) (id, got stri
 	}
 	id, got, _ = strings.Cut(strings.TrimSpace(out), " ")
 	if !strings.HasPrefix(id, "$") {
-		return "", "", i18n.Err("remote.tmuxFailed", strings.TrimSpace(out))
+		return "", "", tmuxErr("remote.tmuxFailed", strings.TrimSpace(out))
 	}
 	q := shellQuote(id)
 	if _, err := tmuxExec(c, "tmux set-option -t "+q+" @osat_owner "+shellQuote(tmuxOwner())); err != nil {
@@ -359,6 +367,9 @@ func tmuxCreate(c *ssh.Client, conn store.Connection, name string) (id, got stri
 
 // TmuxRename renombra una sesión y devuelve el nombre que quedó.
 func (m *Manager) TmuxRename(sessionID, id, name string) (string, error) {
+	if !validTmuxID(id) {
+		return "", tmuxErr("remote.tmuxFailed", "id")
+	}
 	var got string
 	err := m.withClient(sessionID, func(c *ssh.Client) error {
 		out, err := tmuxExec(c, tmuxRenameScript(id, name))
@@ -370,6 +381,9 @@ func (m *Manager) TmuxRename(sessionID, id, name string) (string, error) {
 
 // TmuxKill termina una sesión (y todo lo que corre en ella).
 func (m *Manager) TmuxKill(sessionID, id string) error {
+	if !validTmuxID(id) {
+		return tmuxErr("remote.tmuxFailed", "id")
+	}
 	return m.withClient(sessionID, func(c *ssh.Client) error {
 		_, err := tmuxExec(c, tmuxKillScript(id))
 		return err

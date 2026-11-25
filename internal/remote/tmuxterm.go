@@ -53,6 +53,7 @@ type tmuxCtl struct {
 	pane   string // %N, de la respuesta del display-message
 	cursor [2]int // x, y
 	height int
+	rows   int // filas de la terminal de osat (pueden no ser las del panel, p. ej. al solo mirar)
 	alt    bool
 	live   bool // ya se mostró la captura: la salida pasa
 	exited bool
@@ -74,6 +75,7 @@ func (c *tmuxCtl) command(cmd string, onReply func(controlReply)) {
 }
 
 func (c *tmuxCtl) start(cols, rows int) {
+	c.rows = rows
 	if !c.readOnly {
 		c.command(fmt.Sprintf("refresh-client -C %d,%d", cols, rows), nil)
 	}
@@ -110,7 +112,18 @@ func (c *tmuxCtl) gotCapture(r controlReply) {
 		}
 	}
 	b.WriteString(strings.Join(lines, "\r\n"))
-	fmt.Fprintf(&b, "\x1b[%d;%dH", c.cursor[1]+1, c.cursor[0]+1)
+	// El panel ocupa las últimas `height` líneas escritas: su primera fila no es
+	// la 1 de la terminal si escribimos menos líneas que filas, o si el panel es
+	// de otro alto (al solo mirar, o si otro cliente fija el tamaño).
+	top := 0
+	if c.height > 0 {
+		top = max(0, min(len(lines), c.rows)-c.height)
+	}
+	row := top + c.cursor[1] + 1
+	if c.rows > 0 {
+		row = min(row, c.rows)
+	}
+	fmt.Fprintf(&b, "\x1b[%d;%dH", max(1, row), c.cursor[0]+1)
 	c.send([]byte(b.String()))
 	c.live = true
 }
@@ -166,15 +179,35 @@ func (c *tmuxCtl) resize(cols, rows int) {
 // startTmux conecta una terminal a una shell persistente. Las de varias
 // ventanas o paneles (Plain) van por startShell con un tmux attach común.
 func (m *Manager) startTmux(sh *sharedClient, c store.Connection, t TmuxTarget, cols, rows int) (*Session, error) {
+	// Si algo falla después de crearla, se borra: si no, quedaría una sesión que
+	// nadie abre (y el reintento crearía otra).
+	created := ""
+	fail := func(err error) (*Session, error) {
+		if created != "" {
+			_, _ = tmuxExec(sh.client, tmuxKillScript(created))
+		}
+		return nil, err
+	}
 	if t.Create {
 		id, name, err := tmuxCreate(sh.client, c, t.Name)
 		if err != nil {
 			return nil, err
 		}
+		created = id
 		t.ID, t.Name, t.Create, t.Plain, t.ReadOnly = id, name, false, false, false
-	}
-	if t.ID == "" || !strings.HasPrefix(t.ID, "$") {
-		return nil, i18n.Err("remote.tmuxFailed", "id")
+	} else {
+		if !validTmuxID(t.ID) {
+			return nil, tmuxErr("remote.tmuxFailed", "id")
+		}
+		// Antes de conectarse: que tmux esté y la sesión exista. Si no, el error corta
+		// la reconexión automática en vez de reintentar para siempre.
+		l, err := tmuxList(sh.client)
+		if err != nil {
+			return nil, err
+		}
+		if !tmuxHas(l.Sessions, t.ID) {
+			return nil, tmuxErr("remote.tmuxGone")
+		}
 	}
 	attach := "tmux attach-session"
 	if t.ReadOnly {
@@ -183,13 +216,14 @@ func (m *Manager) startTmux(sh *sharedClient, c store.Connection, t TmuxTarget, 
 	attach += " -t " + shellQuote(t.ID)
 	if t.Plain {
 		s, err := m.startShellCmd(sh, c, cols, rows, false, attach)
-		if err == nil {
-			s.tmuxID = t.ID
-			if t.Name != "" {
-				s.title = t.Name
-			}
+		if err != nil {
+			return fail(err)
 		}
-		return s, err
+		s.tmuxID = t.ID
+		if t.Name != "" {
+			s.title = t.Name
+		}
+		return s, nil
 	}
 	if cols <= 0 {
 		cols = 120
@@ -199,24 +233,24 @@ func (m *Manager) startTmux(sh *sharedClient, c store.Connection, t TmuxTarget, 
 	}
 	sess, err := sh.client.NewSession()
 	if err != nil {
-		return nil, err
+		return fail(err)
 	}
 	stdin, err := sess.StdinPipe()
 	if err != nil {
 		sess.Close()
-		return nil, err
+		return fail(err)
 	}
 	stdout, err := sess.StdoutPipe()
 	if err != nil {
 		sess.Close()
-		return nil, err
+		return fail(err)
 	}
 	var errOut limitedBuffer
 	errOut.max = 4 << 10
 	sess.Stderr = &errOut
 	if err := sess.Start("tmux -C " + strings.TrimPrefix(attach, "tmux ")); err != nil {
 		sess.Close()
-		return nil, err
+		return fail(err)
 	}
 
 	title := t.Name
@@ -266,7 +300,9 @@ func (m *Manager) startTmux(sh *sharedClient, c store.Connection, t TmuxTarget, 
 			if l, err := tmuxList(sh.client); err != nil {
 				msg = err.Error()
 			} else if tmuxHas(l.Sessions, t.ID) {
+				// Alguien nos desconectó (p. ej. tmux attach -d): la pestaña lo avisa y no vuelve a entrar sola.
 				msg = i18n.T("remote.tmuxDetached")
+				m.emit("term:tmuxdetached:"+s.ID, msg)
 			}
 		} else if e := strings.TrimSpace(errOut.String()); e != "" {
 			if !tmuxGone(e) {
@@ -297,8 +333,27 @@ func boolInt(b bool) int {
 // Write hace de stdin de la sesión: lo que se escribe va al panel con send-keys
 // (lo usan las teclas, el puente con Claude y los snippets).
 func (c *tmuxCtl) Write(p []byte) (int, error) {
+	if c.readOnly {
+		return 0, errTmuxReadOnly // así el puente con Claude no cree que escribió
+	}
 	c.write(p)
 	return len(p), nil
+}
+
+var errTmuxReadOnly = i18n.Err("remote.tmuxReadOnly")
+
+// validTmuxID: los ids de sesión de tmux son $ y un número. Lo que venga de un
+// espacio de trabajo guardado se controla antes de ponerlo en un comando.
+func validTmuxID(id string) bool {
+	if len(id) < 2 || id[0] != '$' {
+		return false
+	}
+	for _, r := range id[1:] {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 func tmuxHas(list []TmuxSession, id string) bool {

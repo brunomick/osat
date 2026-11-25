@@ -640,6 +640,7 @@ export interface OsatError {
     | 'LOCK_STORE_UNAVAILABLE'
     | 'LOCK_NOT_ENABLED'
     | 'GIT_IDENTITY'
+    | 'TMUX'
   message: string
   data?: Record<string, string>
 }

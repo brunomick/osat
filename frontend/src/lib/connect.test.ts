@@ -407,6 +407,21 @@ describe('connectTab sin preguntas (interactive: false)', () => {
     await connectTab(tab({ fromSession: 'vieja' }), 80, 24, quiet)
     expect(m.openTerminal).toHaveBeenCalledWith(expect.objectContaining({ noPrompt: true }))
   })
+
+  it('shell persistente: un error de tmux no prueba otra conexión y corta la reconexión', async () => {
+    m.openTerminalFrom.mockRejectedValue(osatError('TMUX', 'la shell persistente ya no existe en el servidor'))
+    const p = connectTab(tab({ fromSession: 'viva', tmux: { id: '$3', name: 'x' } }), 80, 24, quiet)
+    await expect(p).rejects.toThrow('ya no existe')
+    expect(m.openTerminal).not.toHaveBeenCalled()
+    m.openTerminal.mockRejectedValue(osatError('TMUX', 'la shell persistente ya no existe en el servidor'))
+    await expect(connectTab(tab({ tmux: { id: '$3', name: 'x' } }), 80, 24, quiet)).rejects.toBeInstanceOf(NeedsUserError)
+  })
+
+  it('una shell que se está creando no se reintenta por otra conexión (crearía otra)', async () => {
+    m.openTerminalFrom.mockRejectedValue(new Error('se cortó'))
+    await expect(connectTab(tab({ fromSession: 'viva', tmux: { id: '', name: 'x', create: true } }), 80, 24, quiet)).rejects.toThrow('se cortó')
+    expect(m.openTerminal).not.toHaveBeenCalled()
+  })
 })
 
 describe('resolveJumpError', () => {

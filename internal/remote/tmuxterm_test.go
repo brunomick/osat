@@ -115,3 +115,51 @@ func TestTmuxGone(t *testing.T) {
 		t.Error("otro error no es una sesión que ya no existe")
 	}
 }
+
+func TestTmuxTermCursorWithShorterOrTallerPane(t *testing.T) {
+	// Solo mirar desde una terminal de 10 filas un panel de 3: el panel son las últimas 3 líneas escritas.
+	c, f := newFakeCtl(true)
+	c.start(80, 10)
+	feedLines(c,
+		"%begin 1 3 1", "%0 2 1 3 0", "%end 1 3 1",
+		"%begin 1 4 1", "h1", "h2", "v1", "v2", "v3", "%end 1 4 1",
+	)
+	// 5 líneas escritas: el panel empieza en la fila 3; el cursor (y=1) va a la 4.
+	if got := f.out.String(); !strings.HasSuffix(got, "\x1b[4;3H") {
+		t.Fatalf("got %q", got)
+	}
+	// Un panel más alto que la terminal: el cursor no se pasa de la última fila.
+	c2, f2 := newFakeCtl(true)
+	c2.start(80, 2)
+	feedLines(c2, "%begin 1 3 1", "%0 0 4 5 0", "%end 1 3 1", "%begin 1 4 1", "a", "b", "c", "d", "e", "%end 1 4 1")
+	if got := f2.out.String(); !strings.HasSuffix(got, "\x1b[2;1H") {
+		t.Fatalf("got %q", got)
+	}
+}
+
+func TestTmuxTermReadOnlyWriteFails(t *testing.T) {
+	c, _ := newFakeCtl(true)
+	if _, err := c.Write([]byte("ls\r")); err == nil {
+		t.Fatal("solo mirar: escribir tiene que fallar (el puente con Claude lo informa)")
+	}
+}
+
+func TestControlParserEndInsideCapture(t *testing.T) {
+	var p controlParser
+	var replies []controlReply
+	p.onReply = func(r controlReply) { replies = append(replies, r) }
+	for _, l := range []string{"%begin 9 40 1", "%end 1 1 1", "%error de una pantalla", "%end 9 40 1"} {
+		p.feed([]byte(l))
+	}
+	if len(replies) != 1 || len(replies[0].lines) != 2 {
+		t.Fatalf("got %+v", replies)
+	}
+}
+
+func TestValidTmuxID(t *testing.T) {
+	for id, ok := range map[string]bool{"$0": true, "$12": true, "$": false, "": false, "3": false, "$1'; run-shell x": false} {
+		if validTmuxID(id) != ok {
+			t.Errorf("%q", id)
+		}
+	}
+}

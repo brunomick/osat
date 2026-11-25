@@ -87,6 +87,7 @@
     return d
   }
   let sessionId: string | null = null
+  let tmuxDetached = false // shell persistente: alguien nos desconectó (ver onExit)
   let state: 'connecting' | 'ready' | 'reconnecting' | 'closed' = 'connecting'
   let retry: Reconnector | null = null
   let resizeTimer: ReturnType<typeof setTimeout>
@@ -118,6 +119,7 @@
       on(`term:data:${id}`, (b64: string) => term.write(b64ToBytes(b64))),
       on(`term:exit:${id}`, (msg: string) => onExit(msg)),
       on(`term:tmuxname:${id}`, (name: string) => onTmuxName(name)),
+      on(`term:tmuxdetached:${id}`, () => (tmuxDetached = true)),
     )
     if (screen) term.write(screen)
     state = 'ready'
@@ -146,6 +148,7 @@
         on(`term:data:${info.id}`, (b64: string) => term.write(b64ToBytes(b64))),
         on(`term:exit:${info.id}`, (msg: string) => onExit(msg)),
         on(`term:tmuxname:${info.id}`, (name: string) => onTmuxName(name)),
+        on(`term:tmuxdetached:${info.id}`, () => (tmuxDetached = true)),
       )
       keepTmux(info)
       term.reset() // borra el "Conectando…" antes de recibir el banner
@@ -173,11 +176,12 @@
     state = 'closed'
     patchTab(tab.id, { status: 'closed', sessionId: undefined, shared: false })
     // Shell persistente sin texto: la sesión de tmux ya no existe (exit, o alguien la terminó).
-    // La pestaña queda con el aviso; reconectar no tendría a qué.
-    if (tab.tmux && !msg) {
-      term.write(`
-[33m● ${tr('term.tmuxEnded')}[0m
-`)
+    // Si alguien nos desconectó (tmux attach -d), tampoco se vuelve a entrar sola.
+    // La pestaña queda con el aviso; Enter vuelve a intentar.
+    if (tab.tmux && (!msg || tmuxDetached)) {
+      const text = msg || tr('term.tmuxEnded')
+      tmuxDetached = false
+      term.write(`\r\n\x1b[33m● ${text.replace(/\.$/, '')}.\x1b[0m \x1b[90m${tr('term.pressReconnect')}\x1b[0m\r\n`)
       const c = $connections.find((x) => x.id === tab.connId)
       if (c) refreshShells(c)
       return
@@ -250,6 +254,7 @@
       on(`term:data:${info.id}`, (b64: string) => term.write(b64ToBytes(b64))),
       on(`term:exit:${info.id}`, (msg: string) => onExit(msg)),
       on(`term:tmuxname:${info.id}`, (name: string) => onTmuxName(name)),
+        on(`term:tmuxdetached:${info.id}`, () => (tmuxDetached = true)),
     )
     keepTmux(info)
     // Sin term.reset(): el shell nuevo sigue debajo de lo que había.
