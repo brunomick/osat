@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// TestMain le pasa a App los archivos de la raíz del repo, como hace main con los que embebe (resources.go).
+// TestMain le pasa a App los archivos de la raíz del repo, como hace main con los que embebe (main.go y main_android.go).
 func TestMain(m *testing.M) {
 	read := func(p string) []byte {
 		b, err := os.ReadFile(filepath.Join("..", "..", p))

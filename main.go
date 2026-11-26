@@ -24,6 +24,7 @@ import (
 	"osat/internal/i18n"
 	"osat/internal/settings"
 	"osat/internal/store"
+	"osat/internal/updater"
 )
 
 //go:embed all:frontend/dist
@@ -35,9 +36,27 @@ var assets embed.FS
 //go:embed build/appicon.png
 var appIcon []byte
 
+// Lo que App (internal/app) usa de la raíz del repo: go:embed solo llega a la carpeta del paquete y a las de
+// abajo, así que se embebe acá y se le pasa con app.SetResources. main_android.go hace lo mismo.
+
+//go:embed frontend/package.json
+var packageJSON []byte
+
+//go:embed CHANGELOG.md
+var changelogMD string
+
+//go:embed CHANGELOG.en.md
+var changelogENMD string
+
+//go:embed frontend/src/lib/sitefill.js
+var siteFillJS string
+
+func resources() app.Resources {
+	return app.Resources{PackageJSON: packageJSON, Changelog: changelogMD, ChangelogEN: changelogENMD, SiteFillJS: siteFillJS}
+}
 func main() {
 	defer applog.Recover("main")
-	if openUserInstall() {
+	if updater.OpenUserInstall() {
 		return
 	}
 

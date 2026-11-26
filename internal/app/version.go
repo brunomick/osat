@@ -2,7 +2,7 @@ package app
 
 import "encoding/json"
 
-// Resources son los archivos que osat lleva adentro y usa App. Los embebe el paquete main (resources.go en la
+// Resources son los archivos que osat lleva adentro y usa App. Los embebe el paquete main (main.go y main_android.go, en la
 // raíz del repo), porque go:embed no llega a carpetas de más arriba, y los pasa con SetResources antes de NewApp.
 type Resources struct {
 	PackageJSON []byte // frontend/package.json: de ahí sale la versión, para no repetirla en Go

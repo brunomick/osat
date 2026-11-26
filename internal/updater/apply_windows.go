@@ -54,6 +54,16 @@ func UserInstallExe() (string, bool) {
 	return target, true
 }
 
+// OpenUserInstall abre el osat instalado para el usuario si este es la copia vieja de Archivos de programa (ver
+// UserInstallExe), con los mismos argumentos. Devuelve true si lo abrió: este osat tiene que cerrarse.
+func OpenUserInstall() bool {
+	target, ok := UserInstallExe()
+	if !ok {
+		return false
+	}
+	return exec.Command(target, os.Args[1:]...).Start() == nil
+}
+
 // Detect dice cómo se actualiza este osat. Instalado para el usuario, o en Archivos de programa (las
 // versiones hasta la 1.1.0), se corre el instalador, que no pide permisos y deja osat instalado para
 // el usuario. Si no, es el .zip portátil o una copia suelta: se reemplaza osat.exe.
