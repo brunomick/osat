@@ -90,6 +90,10 @@ func NewApp(cfg settings.Settings) (*App, error) {
 	a.initBrowser(st.Dir(), emit)
 	remote.SetOptions(termOptions(cfg))
 	a.initBridge(st.Dir())
+	// Las credenciales de los sitios de antes del cifrado se cifran ahora (store/credvault.go).
+	if err := st.SealCreds(); err != nil {
+		slog.Warn("no se pudieron cifrar las credenciales de los sitios", "err", err)
+	}
 	return a, nil
 }
 

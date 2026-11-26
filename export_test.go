@@ -377,7 +377,7 @@ func TestExportImportDefaultCreds(t *testing.T) {
 // importar van al keyring de este equipo; una etiqueta que ya existe se saltea.
 func TestExportImportCreds(t *testing.T) {
 	src := newExportApp(t)
-	if _, err := src.CredSave(store.CredInput{Label: "AWS root", Account: "123456789012", User: "admin", Password: "hunter2"}); err != nil {
+	if _, err := src.CredSave(store.CredInput{Label: "AWS root", Domain: "console.aws.amazon.com", Account: "123456789012", User: "admin", Password: "hunter2"}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := src.CredSave(store.CredInput{Label: "Hosting", User: "h", Password: "hp"}); err != nil {
@@ -413,9 +413,9 @@ func TestExportImportCreds(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		got = append(got, c.Label+"|"+d.Account+"|"+d.User+"|"+d.Password)
+		got = append(got, c.Label+"|"+c.Domain+"|"+d.Account+"|"+d.User+"|"+d.Password)
 	}
-	want := []string{"hosting|||local", "AWS root|123456789012|admin|hunter2"}
+	want := []string{"hosting||||local", "AWS root|console.aws.amazon.com|123456789012|admin|hunter2"}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("credenciales importadas = %q, quería %q", got, want)
 	}

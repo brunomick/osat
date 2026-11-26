@@ -31,6 +31,8 @@ func init() {
 		"data.invalidCredentialsJsonV":        {es: "credentials.json inválido: %v", en: "invalid credentials.json: %v"},
 		"data.theSiteCredNeedsALabel":         {es: "las credenciales necesitan una etiqueta", en: "the credentials need a label"},
 		"data.siteCredLabelExists":            {es: "ya hay credenciales con la etiqueta «%s»", en: "there are already credentials labeled «%s»"},
+		"data.credsLost":                      {es: "los datos de esta credencial no se pueden descifrar en esta PC: editala para cargarlos de nuevo", en: "this credential's data can't be decrypted on this PC: edit it to enter it again"},
+		"data.siteCredBadDomain":              {es: "el dominio no es válido (por ejemplo: panel.empresa.com)", en: "the domain is not valid (for example: panel.example.com)"},
 		"data.siteCredDoesNotExist":           {es: "credenciales inexistentes", en: "credentials do not exist"},
 		"data.couldnTReadTheSiteCred":         {es: "no se pudieron leer las credenciales del almacén del sistema: %v", en: "couldn't read the credentials from the system store: %v"},
 		"data.invalidDefaultsJsonV":           {es: "defaults.json inválido: %v", en: "invalid defaults.json: %v"},

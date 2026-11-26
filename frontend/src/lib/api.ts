@@ -260,10 +260,12 @@ export interface Site {
   order: number
 }
 
-/** Credencial para los sitios web: acá solo la etiqueta; los datos están en el almacén del sistema (credGet). */
+/** Credencial para los sitios web: acá solo la etiqueta y el dominio; los datos están en el almacén del sistema (credGet). */
 export interface Cred {
   id: string
   label: string
+  /** Host donde se usa (también sus subdominios); sin él no se puede rellenar el login. */
+  domain?: string
 }
 
 export interface CredData {
@@ -276,6 +278,7 @@ export interface CredData {
 export interface CredInput extends CredData {
   id: string
   label: string
+  domain: string
   keepPassword: boolean
 }
 
@@ -302,7 +305,7 @@ export interface RdpNativeEvent {
 
 export interface BrowserEvent {
   id: string
-  kind: 'nav' | 'title' | 'newWindow' | 'error'
+  kind: 'nav' | 'title' | 'newWindow' | 'error' | 'loaded'
   url: string
   title: string
   canBack: boolean
@@ -639,6 +642,7 @@ export interface OsatError {
     | 'LOCK_TOO_SHORT'
     | 'LOCK_STORE_UNAVAILABLE'
     | 'LOCK_NOT_ENABLED'
+    | 'CREDS_LOST'
     | 'GIT_IDENTITY'
     | 'TMUX'
   message: string
@@ -940,6 +944,11 @@ export const api = {
   /** Falla si osat está bloqueado. */
   credGet: (id: string): Promise<CredData> => app().CredGet(id),
   credDelete: (id: string): Promise<void> => app().CredDelete(id),
+  /** Rellena el login de la página de la pestaña tabId con la credencial (sin enviarlo). Falla fuera de su dominio.
+   * auto: lo hace osat solo, sin preguntar; no pisa lo que la persona ya escribió. */
+  browserFill: (tabId: string, credId: string, auto = false): Promise<void> => app().BrowserFill(tabId, credId, auto),
+  /** ¿La página de la pestaña tiene un login para rellenar? Solo mira: no recibe ni escribe datos. */
+  browserHasLogin: (tabId: string): Promise<boolean> => app().BrowserHasLogin(tabId),
   /** Navegador nativo de los sitios web. id = id de la pestaña; los eventos llegan como "browser:event" (BrowserEvent). */
   browserSupported: (): Promise<boolean> => app().BrowserSupported(),
   /** Crea la vista nativa de la pestaña y carga la dirección. scale = devicePixelRatio. */

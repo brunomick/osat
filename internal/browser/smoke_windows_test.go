@@ -3,7 +3,7 @@
 package browser
 
 // Prueba de humo del motor real: abre una ventana, navega, intercepta window.open y
-// comprueba que la cookie sobrevive a cerrar y reabrir el motor (el login se mantiene).
+// comprueba que la cookie sobrevive a cerrar y reabrir el motor (el login se mantiene) y que Eval devuelve el resultado.
 // Solo corre a mano: OSAT_SMOKE=1 go.exe test -run TestSmokeEngine -v ./internal/browser/
 
 import (
@@ -12,6 +12,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 	"unsafe"
@@ -49,6 +50,10 @@ document.cookie="login=ok; max-age=3600; path=/";
 document.title="cookie-set";
 window.open("`+"http://example.invalid/nueva"+`");
 </script></body></html>`)
+		case "/login":
+			fmt.Fprint(w, `<html><head><title>login</title></head><body><form>
+<input id="u" name="username"><input id="p" type="password"><button>Entrar</button></form>
+<script>document.getElementById("p").addEventListener("input", function () { document.title = "typed"; });</script></body></html>`)
 		case "/get":
 			fmt.Fprint(w, `<html><head><title>x</title></head><body><script>document.title="got:"+document.cookie;</script></body></html>`)
 		}
@@ -90,8 +95,13 @@ window.open("`+"http://example.invalid/nueva"+`");
 	}
 	defer close(stop)
 
-	profile := t.TempDir()
-	run := func(path string, want func(Event) bool) []Event {
+	// No t.TempDir: WebView2 suelta los archivos del perfil un rato después de cerrar y el borrado fallaría.
+	profile, err := os.MkdirTemp("", "osat-smoke")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(profile)
+	run := func(path string, want func(Event) bool, then ...func(Engine)) []Event {
 		evs := make(chan Event, 64)
 		eng, err := New(profile, func(e Event) { evs <- e })
 		if err != nil {
@@ -109,6 +119,9 @@ window.open("`+"http://example.invalid/nueva"+`");
 				got = append(got, e)
 				t.Logf("evento %+v", e)
 				if want(e) {
+					for _, f := range then {
+						f(eng)
+					}
 					return got
 				}
 			case <-deadline:
@@ -127,5 +140,35 @@ window.open("`+"http://example.invalid/nueva"+`");
 		}
 		return sawNew && sawTitle
 	})
-	run("/get", func(e Event) bool { return e.Title == "got:login=ok" })
+	run("/get", func(e Event) bool { return e.Title == "got:login=ok" }, func(eng Engine) {
+		if got, err := eng.Eval("t1", `[document.title, 1 + 1]`); err != nil || got != `["got:login=ok",2]` {
+			t.Fatalf("Eval = %s, %v", got, err)
+		}
+		if _, err := eng.Eval("no-existe", "1"); err == nil {
+			t.Fatal("Eval en una pestaña inexistente no falló")
+		}
+	})
+
+	// El script de relleno de los sitios (sitefill.js) en la página real: escribe y la página se entera.
+	src, err := os.ReadFile("../../frontend/src/lib/sitefill.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fill := strings.TrimSpace(string(src)) + `({"domain":"127.0.0.1","account":"","user":"admin","password":"hunter2"})`
+	run("/login", func(e Event) bool { return e.Kind == "loaded" }, func(eng Engine) {
+		if got, err := eng.Eval("t1", strings.TrimSpace(string(src))+`({"probe":true})`); err != nil || got != `"login"` {
+			t.Fatalf("probe = %s, %v", got, err)
+		}
+		if got, err := eng.Eval("t1", fill); err != nil || got != `"ok"` {
+			t.Fatalf("relleno = %s, %v", got, err)
+		}
+		got, err := eng.Eval("t1", `[document.getElementById("u").value, document.getElementById("p").value, document.title]`)
+		if err != nil || got != `["admin","hunter2","typed"]` {
+			t.Fatalf("después del relleno = %s, %v", got, err)
+		}
+		other := strings.Replace(fill, `"127.0.0.1"`, `"empresa.com"`, 1)
+		if got, err := eng.Eval("t1", other); err != nil || got != `"host"` {
+			t.Fatalf("otro dominio = %s, %v", got, err)
+		}
+	})
 }

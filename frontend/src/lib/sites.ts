@@ -1,5 +1,5 @@
-import type { Site } from './api'
-import { sameSiteUrl } from './siteUrl'
+import type { Cred, Site } from './api'
+import { sameSiteUrl, siteHost } from './siteUrl'
 
 /** Los sitios que coinciden con la búsqueda (nombre o dirección), en el orden elegido por el usuario. */
 export function filterSites(sites: Site[], query: string): Site[] {
@@ -26,4 +26,12 @@ export function placeBeforeId(shown: Site[], dragId: string, ref: string | undef
  */
 export function siteForTab(sites: Site[], siteId: string | undefined, url: string): Site | undefined {
   return (siteId ? sites.find((s) => s.id === siteId) : undefined) ?? sites.find((s) => sameSiteUrl(s.url, url))
+}
+
+/** ¿La credencial es para esta dirección? Su dominio es el host de la página o uno de sus padres (subdominios). */
+export function credMatches(c: Cred, url: string): boolean {
+  const d = c.domain
+  if (!d) return false
+  const host = siteHost(url).toLowerCase()
+  return host === d || host.endsWith('.' + d)
 }

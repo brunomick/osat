@@ -122,6 +122,8 @@ type Store struct {
 	snippets map[string]Snippet // ver snippets.go
 	sites    map[string]Site    // ver sites.go
 	creds    []Cred             // ver credentials.go
+	keyMu    sync.Mutex         // ver credvault.go
+	siteKey  []byte             // la clave de las credenciales; nil = todavía no se leyó
 	defaults DefaultCreds       // ver defaults.go
 
 	workspaces    map[string]Workspace // ver workspaces.go

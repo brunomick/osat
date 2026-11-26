@@ -146,3 +146,48 @@ func TestImportCredsSkipsSameLabel(t *testing.T) {
 		t.Fatalf("la segunda importación agregó %d: %+v", n, s.Creds())
 	}
 }
+
+func TestNormalizeCredDomain(t *testing.T) {
+	for in, want := range map[string]string{
+		"":                                  "",
+		"  ":                                "",
+		"Panel.Empresa.com":                 "panel.empresa.com",
+		"https://panel.empresa.com/login?x": "panel.empresa.com",
+		"http://10.0.0.5:8080/admin":        "10.0.0.5",
+		"panel.empresa.com:8443/x":          "panel.empresa.com",
+		"*.empresa.com":                     "empresa.com",
+		".empresa.com.":                     "empresa.com",
+	} {
+		got, err := NormalizeCredDomain(in)
+		if err != nil || got != want {
+			t.Errorf("NormalizeCredDomain(%q) = %q, %v; quiero %q", in, got, err, want)
+		}
+	}
+	for _, bad := range []string{"no es un dominio", "javascript:alert(1)", "a_b.com", "https://"} {
+		if got, err := NormalizeCredDomain(bad); err == nil {
+			t.Errorf("NormalizeCredDomain(%q) = %q, quería error", bad, got)
+		}
+	}
+}
+
+func TestCredDomainSavedAndReloaded(t *testing.T) {
+	keyring.MockInit()
+	s := newTestStore(t)
+	c := mustSaveCred(t, s, CredInput{Label: "Panel", Domain: "https://Panel.Empresa.com/login", User: "u", Password: "p"})
+	if c.Domain != "panel.empresa.com" {
+		t.Fatalf("dominio = %q", c.Domain)
+	}
+	c = mustSaveCred(t, s, CredInput{ID: c.ID, Label: "Panel", Domain: "empresa.com", User: "u", KeepPassword: true})
+	if got := reloadCreds(t, s).Creds(); len(got) != 1 || got[0].Domain != "empresa.com" {
+		t.Fatalf("recargadas = %+v", got)
+	}
+	if _, err := s.SaveCred(CredInput{Label: "Otra", Domain: "no vale"}); err == nil {
+		t.Fatal("un dominio inválido se guardó")
+	}
+	if n, err := s.ImportCreds([]CredInput{{Label: "Importada", Domain: "HTTPS://x.com/", User: "u"}}); n != 1 || err != nil {
+		t.Fatalf("ImportCreds = %d, %v", n, err)
+	}
+	if got := s.Creds(); got[1].Domain != "x.com" {
+		t.Fatalf("importada = %+v", got[1])
+	}
+}

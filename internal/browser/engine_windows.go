@@ -192,6 +192,7 @@ const (
 	slotWvAddSourceChanged    = 11
 	slotWvAddHistoryChanged   = 13
 	slotWvAddNavCompleted     = 15
+	slotWvExecuteScript       = 29
 	slotWvReload              = 31
 	slotWvGetCanGoBack        = 38
 	slotWvGetCanGoForward     = 39
@@ -571,8 +572,11 @@ func (e *winEngine) attach(t *tab, ctrlRaw uintptr, url string) error {
 	on(slotWvAddTitleChanged, func(_, _ uintptr) { e.emit(snapshot("title")) })
 	on(slotWvAddNavCompleted, func(_, args uintptr) {
 		var status int32
-		if !comBool(ptr(args), slotNavDoneIsSuccess) &&
-			comCall(ptr(args), slotNavDoneErrStatus, uintptr(unsafe.Pointer(&status))) == 0 &&
+		if comBool(ptr(args), slotNavDoneIsSuccess) {
+			e.emit(snapshot("loaded"))
+			return
+		}
+		if comCall(ptr(args), slotNavDoneErrStatus, uintptr(unsafe.Pointer(&status))) == 0 &&
 			status != webErrorOperationCanceled {
 			e.emit(snapshot("error"))
 		}
@@ -641,6 +645,46 @@ func (e *winEngine) Forward(id string) error {
 
 func (e *winEngine) Reload(id string) error {
 	return e.callTab(id, func(t *tab) error { return hrError("Reload", comCall(t.wvPtr(), slotWvReload)) })
+}
+
+// Eval usa ExecuteScript, que corre en el documento principal y avisa el resultado (JSON) por un handler.
+func (e *winEngine) Eval(id, script string) (string, error) {
+	res := make(chan string, 1)
+	err := e.call(callTimeout, func(done func(error)) {
+		t := e.tabs[id]
+		switch {
+		case t == nil:
+			done(errNoTab)
+			return
+		case t.ctrl == nil:
+			done(errNotReady)
+			return
+		}
+		h := newHandler(func(hr, json uintptr) uintptr {
+			if err := hrError("ExecuteScript", hr); err != nil {
+				done(err)
+				return 0
+			}
+			res <- windows.UTF16PtrToString((*uint16)(ptr(json)))
+			done(nil)
+			return 0
+		})
+		// Hasta que WebView2 lo llame (o se cierre la vista) no se puede soltar. Es uno por relleno: poca cosa.
+		e.keep = append(e.keep, h)
+		p, err := windows.UTF16PtrFromString(script)
+		if err != nil {
+			done(err)
+			return
+		}
+		if err := hrError("ExecuteScript", comCall(t.wvPtr(), slotWvExecuteScript, uintptr(unsafe.Pointer(p)), uintptr(unsafe.Pointer(h)))); err != nil {
+			done(err)
+		}
+		runtime.KeepAlive(p)
+	})
+	if err != nil {
+		return "", err
+	}
+	return <-res, nil
 }
 
 func (e *winEngine) SetBounds(id string, b Bounds, scale float64) error {

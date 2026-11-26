@@ -208,6 +208,65 @@ func (e *linuxEngine) Reload(id string) error {
 	return e.callTab(id, func(v *C.GtkWidget) { C.osat_view_reload(v) })
 }
 
+// ---------- Scripts ----------
+
+type evalResult struct {
+	json string
+	err  error
+}
+
+var (
+	evalsMu  sync.Mutex
+	evals    = map[uintptr]chan evalResult{}
+	nextEval uintptr
+)
+
+//export osatEvalDone
+func osatEvalDone(job C.uintptr_t, json, cerr *C.char) {
+	evalsMu.Lock()
+	ch := evals[uintptr(job)]
+	delete(evals, uintptr(job))
+	evalsMu.Unlock()
+	if ch == nil { // quien esperaba ya se fue (tiempo agotado)
+		return
+	}
+	if cerr != nil {
+		ch <- evalResult{err: errors.New("browser: " + C.GoString(cerr))}
+		return
+	}
+	ch <- evalResult{json: C.GoString(json)}
+}
+
+func (e *linuxEngine) Eval(id, script string) (string, error) {
+	ch := make(chan evalResult, 1)
+	evalsMu.Lock()
+	nextEval++
+	job := nextEval
+	evals[job] = ch
+	evalsMu.Unlock()
+	drop := func() {
+		evalsMu.Lock()
+		delete(evals, job)
+		evalsMu.Unlock()
+	}
+	err := e.callTab(id, func(v *C.GtkWidget) {
+		cs := C.CString(script)
+		defer C.free(unsafe.Pointer(cs))
+		C.osat_view_eval(v, cs, C.uintptr_t(job))
+	})
+	if err != nil {
+		drop()
+		return "", err
+	}
+	select {
+	case r := <-ch:
+		return r.json, r.err
+	case <-time.After(callTimeout):
+		drop()
+		return "", errTimeout
+	}
+}
+
 func (e *linuxEngine) SetBounds(id string, b Bounds, scale float64) error {
 	post(func() {
 		if v := e.tabs[id]; v != nil {

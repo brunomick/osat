@@ -3,6 +3,7 @@
   import { t } from '../lib/i18n'
   import { createEventDispatcher, onDestroy, onMount } from 'svelte'
   import { api, errorText, type Cred } from '../lib/api'
+  import { isCredsLost } from '../lib/credsvault'
   import { holdOverlay } from '../lib/overlay'
   import { reloadCreds, toast } from '../lib/stores'
 
@@ -11,14 +12,19 @@
   // Crear o editar una credencial para los sitios. Al editar, la contraseña vacía deja la guardada.
   /** La credencial a editar; sin ella, una nueva. */
   export let cred: Cred | undefined = undefined
+  /** Para una nueva: el dominio con el que arranca (el de la página abierta). */
+  export let domain = ''
 
   const dispatch = createEventDispatcher<{ close: void; saved: Cred }>()
 
   let label = cred?.label ?? ''
+  let domainValue = cred ? cred.domain ?? '' : domain
   let account = ''
   let user = ''
   let password = ''
   let loading = !!cred
+  /** Los datos guardados no se pueden descifrar en esta PC: se cargan de nuevo. */
+  let lost = false
   let saving = false
   let labelInput: HTMLInputElement
 
@@ -30,6 +36,10 @@
       account = d.account
       user = d.user
     } catch (e) {
+      if (isCredsLost(e)) {
+        lost = true
+        return
+      }
       toast(errorText(e), 'error')
       dispatch('close')
     } finally {
@@ -40,7 +50,8 @@
   async function save() {
     saving = true
     try {
-      const c = await api.credSave({ id: cred?.id ?? '', label: label.trim(), account, user, password, keepPassword: !!cred && password === '' })
+      const input = { id: cred?.id ?? '', label: label.trim(), domain: domainValue.trim(), account, user, password, keepPassword: !!cred && !lost && password === '' }
+      const c = await api.credSave(input)
       await reloadCreds()
       dispatch('saved', c)
       dispatch('close')
@@ -61,6 +72,11 @@
         <input bind:this={labelInput} bind:value={label} placeholder={$t('site.credLabelPlaceholder')} spellcheck="false" required />
       </label>
       <label>
+        {$t('site.credDomain')}
+        <input bind:value={domainValue} placeholder={$t('site.credDomainPlaceholder')} spellcheck="false" autocomplete="off" />
+        <span class="dim">{$t('site.credDomainHelp')}</span>
+      </label>
+      <label>
         {$t('site.credAccount')}
         <input bind:value={account} spellcheck="false" autocomplete="off" disabled={loading} />
       </label>
@@ -70,8 +86,9 @@
       </label>
       <label>
         {$t('site.credPassword')}
-        <input type="password" bind:value={password} placeholder={cred ? $t('site.credKeep') : ''} autocomplete="new-password" disabled={loading} />
+        <input type="password" bind:value={password} placeholder={cred && !lost ? $t('site.credKeep') : ''} autocomplete="new-password" disabled={loading} />
       </label>
+      {#if lost}<span class="lost">{$t('site.credLostEdit')}</span>{/if}
       <span class="dim">{$t('site.credHelp')}</span>
       <footer>
         <span class="spacer" />
@@ -122,6 +139,10 @@
   label input {
     color: var(--text);
     font-size: 13px;
+  }
+  .lost {
+    color: var(--warning);
+    font-size: 12px;
   }
   .dim {
     color: var(--text-3);

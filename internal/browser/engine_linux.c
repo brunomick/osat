@@ -99,6 +99,10 @@ static gboolean on_load_failed(WebKitWebView *wv, WebKitLoadEvent ev, gchar *uri
     return FALSE;
 }
 
+static void on_load_changed(WebKitWebView *wv, WebKitLoadEvent ev, gpointer data) {
+    if (ev == WEBKIT_LOAD_FINISHED) emit(GTK_WIDGET(wv), "loaded", NULL);
+}
+
 static void on_view_destroy(GtkWidget *v, gpointer data) {
     osatViewDestroyed((char *)g_object_get_data(G_OBJECT(v), "osat-id"), v);
 }
@@ -215,6 +219,7 @@ GtkWidget *osat_view_new(const char *profileDir, const char *id, const char *url
     g_signal_connect(webkit_web_view_get_back_forward_list(WEBKIT_WEB_VIEW(v)), "changed", G_CALLBACK(on_history), v);
     g_signal_connect(v, "create", G_CALLBACK(on_create), NULL);
     g_signal_connect(v, "load-failed", G_CALLBACK(on_load_failed), NULL);
+    g_signal_connect(v, "load-changed", G_CALLBACK(on_load_changed), NULL);
     g_signal_connect(v, "destroy", G_CALLBACK(on_view_destroy), NULL);
 
     gtk_overlay_add_overlay(GTK_OVERLAY(overlay), v);
@@ -230,6 +235,27 @@ void osat_view_back(GtkWidget *v) { webkit_web_view_go_back(WEBKIT_WEB_VIEW(v));
 void osat_view_forward(GtkWidget *v) { webkit_web_view_go_forward(WEBKIT_WEB_VIEW(v)); }
 void osat_view_reload(GtkWidget *v) { webkit_web_view_reload(WEBKIT_WEB_VIEW(v)); }
 void osat_view_close(GtkWidget *v) { gtk_widget_destroy(v); }
+
+// ---------- Scripts (Engine.Eval) ----------
+
+static void on_eval_done(GObject *src, GAsyncResult *res, gpointer job) {
+    GError *err = NULL;
+    JSCValue *val = webkit_web_view_evaluate_javascript_finish(WEBKIT_WEB_VIEW(src), res, &err);
+    if (!val) {
+        osatEvalDone((uintptr_t)job, NULL, err ? err->message : (char *)"evaluate_javascript");
+        if (err) g_error_free(err);
+        return;
+    }
+    char *json = jsc_value_to_json(val, 0);
+    osatEvalDone((uintptr_t)job, json ? json : (char *)"null", NULL);
+    g_free(json);
+    g_object_unref(val);
+}
+
+// Corre script en el documento principal (sin mundo aislado) y avisa el resultado por osatEvalDone.
+void osat_view_eval(GtkWidget *v, const char *script, uintptr_t job) {
+    webkit_web_view_evaluate_javascript(WEBKIT_WEB_VIEW(v), script, -1, NULL, NULL, NULL, on_eval_done, (gpointer)job);
+}
 
 // Suelta el contexto: sin vistas ni contexto, WebKit termina su proceso de red y guarda las cookies.
 // La próxima vista lo vuelve a crear.

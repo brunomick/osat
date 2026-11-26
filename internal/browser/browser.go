@@ -36,6 +36,7 @@ func (b Bounds) Physical(scale float64) Bounds {
 //   - "title": cambió el título de la página (Title).
 //   - "newWindow": la página pidió una ventana nueva; URL es su destino y no se abrió nada.
 //   - "error": falló la carga de URL. No trae texto: la interfaz pone el suyo.
+//   - "loaded": la página terminó de cargar (ya se le puede correr un script con Eval).
 type Event struct {
 	ID      string `json:"id"`
 	Kind    string `json:"kind"`
@@ -55,6 +56,10 @@ type Engine interface {
 	Back(id string) error
 	Forward(id string) error
 	Reload(id string) error
+	// Eval corre script en el documento principal de la página (no en sus iframes) y devuelve
+	// el resultado como JSON. Es lo único con lo que osat le habla a una página; la página sigue
+	// sin poder hablarle a osat.
+	Eval(id, script string) (string, error)
 	// SetBounds y SetVisible no esperan al motor (el frontend los llama seguido).
 	// Sobre un id desconocido no hacen nada.
 	SetBounds(id string, b Bounds, scale float64) error

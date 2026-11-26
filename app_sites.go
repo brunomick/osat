@@ -1,9 +1,12 @@
 package main
 
 import (
+	_ "embed"
+	"encoding/json"
 	"log/slog"
 	"net/url"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"osat/internal/browser"
@@ -42,6 +45,77 @@ func (a *App) CredGet(id string) (store.CredData, error) {
 
 // CredDelete borra una credencial (y su entrada del keyring).
 func (a *App) CredDelete(id string) error { return a.store.DeleteCred(id) }
+
+// siteFillJS es la función que rellena el login en la página (se prueba con vitest).
+//
+//go:embed frontend/src/lib/sitefill.js
+var siteFillJS string
+
+// BrowserFill rellena el login de la página de la pestaña id con la credencial credID (sin enviarlo). Los
+// datos no pasan por el frontend: van del keyring al script. Solo con osat desbloqueado y en el dominio de la
+// credencial, que comprueba el propio script contra la página que está cargada en ese momento. auto (el relleno que
+// hace osat solo, sin preguntar) no pisa lo que la persona ya escribió.
+func (a *App) BrowserFill(id, credID string, auto bool) error {
+	if a.lock != nil && a.lock.Locked() {
+		return i18n.Err("app.osatIsLocked")
+	}
+	var domain string
+	for _, c := range a.store.Creds() {
+		if c.ID == credID {
+			domain = c.Domain
+		}
+	}
+	d, err := a.store.CredData(credID)
+	if err != nil {
+		return err
+	}
+	if domain == "" {
+		return i18n.Err("app.siteCredNoDomain")
+	}
+	eng, err := a.engine()
+	if err != nil {
+		return err
+	}
+	arg, err := json.Marshal(struct {
+		Domain   string `json:"domain"`
+		Account  string `json:"account"`
+		User     string `json:"user"`
+		Password string `json:"password"`
+		Auto     bool   `json:"auto,omitempty"`
+	}{domain, d.Account, d.User, d.Password, auto})
+	if err != nil {
+		return err
+	}
+	out, err := eng.Eval(id, strings.TrimSpace(siteFillJS)+"("+string(arg)+")")
+	if err != nil {
+		return err
+	}
+	var r string
+	_ = json.Unmarshal([]byte(out), &r)
+	switch r {
+	case "ok":
+		return nil
+	case "host":
+		return i18n.Err("app.siteFillWrongHost", domain)
+	case "form":
+		return i18n.Err("app.siteFillNoForm")
+	}
+	return i18n.Err("app.siteFillFailed")
+}
+
+// BrowserHasLogin dice si la página de la pestaña id tiene un login para rellenar (el mismo script en modo
+// probe: no recibe datos ni escribe nada). Sirve para ofrecer el panel de credenciales al cargar.
+func (a *App) BrowserHasLogin(id string) (bool, error) {
+	eng, err := a.engine()
+	if err != nil {
+		return false, err
+	}
+	out, err := eng.Eval(id, strings.TrimSpace(siteFillJS)+`({"probe":true})`)
+	if err != nil {
+		return false, err
+	}
+	return out == `"login"`, nil
+}
 
 // ---------- Navegador nativo de los sitios (internal/browser) ----------
 

@@ -158,7 +158,7 @@ func (a *App) exportCreds() ([]osatfile.CredEntry, error) {
 		if err != nil {
 			return nil, fmt.Errorf("«%s»: %w", c.Label, err)
 		}
-		out = append(out, osatfile.CredEntry{Label: c.Label, Account: d.Account, User: d.User, Password: d.Password})
+		out = append(out, osatfile.CredEntry{Label: c.Label, Domain: c.Domain, Account: d.Account, User: d.User, Password: d.Password})
 	}
 	return out, nil
 }
@@ -234,7 +234,7 @@ func (a *App) ImportOsat(items []importer.Item) (int, error) {
 	}
 	importedCreds := make([]store.CredInput, len(creds))
 	for i, c := range creds {
-		importedCreds[i] = store.CredInput{Label: c.Label, Account: c.Account, User: c.User, Password: c.Password}
+		importedCreds[i] = store.CredInput{Label: c.Label, Domain: c.Domain, Account: c.Account, User: c.User, Password: c.Password}
 	}
 	if _, err := a.store.ImportCreds(importedCreds); err != nil {
 		errs = append(errs, err)

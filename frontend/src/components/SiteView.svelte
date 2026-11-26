@@ -5,10 +5,11 @@
   import { api, errorText, on, type BrowserBounds, type BrowserEvent } from '../lib/api'
   import { layout, paneRects } from '../lib/layout'
   import { overlayOpen } from '../lib/overlay'
-  import { siteForTab } from '../lib/sites'
+  import { credMatches, siteForTab } from '../lib/sites'
   import { normalizeSiteUrl, siteHost } from '../lib/siteUrl'
-  import { openBlankSite, openSite, patchTab, reloadSites, sites, type Tab } from '../lib/stores'
-  import SiteCredsBar from './SiteCredsBar.svelte'
+  import { creds, openBlankSite, openSite, patchTab, reloadCreds, reloadSites, sites, toast, type Tab } from '../lib/stores'
+  import { locked } from '../lib/lock'
+  import SiteCredsPanel from './SiteCredsPanel.svelte'
 
   // Sitio web de internet: la página va en una vista nativa del sistema (WebView2 / WebKitGTK, internal/browser)
   // que Go pone encima de esta pestaña. Acá está la barra y un div vacío que marca dónde va la vista; la
@@ -101,6 +102,7 @@
       if (u) openSite(u)
       return
     }
+    if (ev.kind === 'loaded') offerCreds()
     if (ev.kind === 'error') {
       error = tr('site.loadError', { url: ev.url })
       return
@@ -124,6 +126,7 @@
     ro.observe(host)
     window.addEventListener('resize', schedule)
     reloadSites().catch(() => {})
+    reloadCreds().catch(() => {})
     // Pestaña nueva, sin dirección: la vista nativa se crea cuando se escribe una (go).
     if (url) open()
     else input.focus()
@@ -169,8 +172,64 @@
 
   // El sitio guardado de esta pestaña: el que la abrió aunque la página haya navegado (tras el login, por ejemplo).
   $: saved = siteForTab($sites, tab.siteId, url)
-  /** La franja de credenciales (la llave) está abierta. */
-  let showCreds = false
+  /** Hay credenciales para el dominio de esta página: la llave se marca (el relleno lo pide la persona). */
+  $: hasCreds = $creds.some((c) => credMatches(c, url))
+
+  // ---------- Panel lateral de credenciales (la llave, o solo al cargar un login) ----------
+
+  /** El panel lateral está abierto. */
+  let offer = false
+  /** Lo abrió offerCreds (no la llave): se cierra solo si la página siguiente no es un login. */
+  let auto = false
+  /** Dominios donde la persona cerró el panel: en esta pestaña no se vuelve a abrir solo. */
+  const dismissed = new Set<string>()
+  let offerSeq = 0
+
+  /**
+   * Al terminar de cargar una página: si hay credenciales para su dominio y la página tiene un login, la rellena
+   * (si hay una sola) o abre el panel (si hay varias); si no, cierra el que se había abierto solo. Reintenta un par de veces porque muchas páginas dibujan el
+   * login después de cargar.
+   */
+  async function offerCreds() {
+    const my = ++offerSeq
+    for (const wait of [0, 1500, 4000]) {
+      if (wait) await new Promise((r) => setTimeout(r, wait))
+      if (my !== offerSeq || destroyed) return
+      if ($locked || dismissed.has(siteHost(url)) || !$creds.some((c) => credMatches(c, url))) break
+      const found = await api.browserHasLogin(id).catch(() => false)
+      if (my !== offerSeq || destroyed) return
+      if (found) {
+        // Una sola credencial para el dominio: no hay nada que elegir, se rellena sin preguntar (sin pisar lo
+        // que la persona ya escribió). Si no se puede, queda la llave.
+        const mine = $creds.filter((c) => credMatches(c, url))
+        if (mine.length === 1) {
+          try {
+            await api.browserFill(id, mine[0].id, true)
+            toast(tr('site.credAutoFilled', { label: mine[0].label }), 'success')
+          } catch {
+            // nada que rellenar (ya estaba escrito) o la página cambió: sin aviso
+          }
+          return
+        }
+        if (!offer) (offer = true), (auto = true)
+        return
+      }
+    }
+    if (auto) offer = false
+  }
+
+  function dismissOffer() {
+    dismissed.add(siteHost(url))
+    offer = false
+  }
+
+  /** La llave: abre el panel o lo cierra (y entonces no se vuelve a abrir solo en este dominio). */
+  function toggleCreds() {
+    if (offer) dismissOffer()
+    else (offer = true), (auto = false)
+  }
+
+  $: if ($locked) offer = false
 
   /** La estrella: agrega la página a los sitios guardados (con el título de la página) o la quita. */
   async function toggleSaved() {
@@ -206,11 +265,12 @@
     <button
       type="button"
       class="icon"
-      class:on={showCreds}
-      title={$t('site.creds')}
-      aria-label={$t('site.creds')}
-      aria-pressed={showCreds}
-      on:click={() => (showCreds = !showCreds)}
+      class:on={offer}
+      class:has={hasCreds}
+      title={hasCreds ? $t('site.credsHere') : $t('site.creds')}
+      aria-label={hasCreds ? $t('site.credsHere') : $t('site.creds')}
+      aria-pressed={offer}
+      on:click={toggleCreds}
     >
       <Icon name="key" />
     </button>
@@ -227,22 +287,24 @@
       <Icon name="star" filled={!!saved} />
     </button>
   </form>
-  {#if showCreds}
-    <SiteCredsBar on:close={() => (showCreds = false)} />
-  {/if}
   {#if error}
     <div class="error" role="alert">{error}</div>
   {/if}
 
-  <!-- Acá va la vista nativa (encima de este div). Lo que se ve en el div es el estado mientras no hay vista. -->
-  <div class="host" bind:this={host}>
-    {#if openError}
-      <div class="note">
-        <p>{openError}</p>
-        <button class="primary" on:click={() => open()}>{$t('ports.retry')}</button>
-      </div>
-    {:else if !opened}
-      <div class="note"><p>{url ? $t('ports.connecting') : $t('site.typeAddress')}</p></div>
+  <div class="main">
+    <!-- Acá va la vista nativa (encima de este div). Lo que se ve en el div es el estado mientras no hay vista. -->
+    <div class="host" bind:this={host}>
+      {#if openError}
+        <div class="note">
+          <p>{openError}</p>
+          <button class="primary" on:click={() => open()}>{$t('ports.retry')}</button>
+        </div>
+      {:else if !opened}
+        <div class="note"><p>{url ? $t('ports.connecting') : $t('site.typeAddress')}</p></div>
+      {/if}
+    </div>
+    {#if offer}
+      <SiteCredsPanel tabId={id} {url} on:dismiss={dismissOffer} on:filled={() => (offer = false)} />
     {/if}
   </div>
 </div>
@@ -272,6 +334,20 @@
   .icon.on:not(.star) {
     color: var(--accent);
   }
+  /* Credenciales para esta página: un punto en la llave. */
+  .icon.has {
+    position: relative;
+  }
+  .icon.has::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
   .error {
     padding: 4px 10px;
     background: var(--bg-2);
@@ -279,8 +355,15 @@
     color: var(--danger);
     font-size: 12px;
   }
+  /* La página y, al costado, el panel de credenciales (que le quita ancho: no puede ir encima). */
+  .main {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+  }
   .host {
     flex: 1;
+    min-width: 0;
     min-height: 0;
     position: relative;
     background: var(--bg);

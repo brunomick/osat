@@ -75,6 +75,7 @@ type SiteEntry struct {
 // CredEntry es una credencial para los sitios web exportada (solo si se eligió incluirlas).
 type CredEntry struct {
 	Label    string `json:"label"`
+	Domain   string `json:"domain,omitempty"` // los archivos anteriores no lo tienen
 	Account  string `json:"account,omitempty"`
 	User     string `json:"user,omitempty"`
 	Password string `json:"password,omitempty"`

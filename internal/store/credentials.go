@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/google/uuid"
@@ -14,13 +15,15 @@ import (
 )
 
 // Credenciales para los sitios web: un baúl único, sin relación con los sitios guardados. En
-// credentials.json solo van el id y la etiqueta; cuenta, usuario y contraseña van juntos en una
+// credentials.json solo van el id, la etiqueta y el dominio; cuenta, usuario y contraseña van juntos en una
 // entrada del keyring por credencial (credKey).
 
-// Cred es una credencial tal como queda en credentials.json.
+// Cred es una credencial tal como queda en credentials.json. Domain (opcional) es el host donde se usa: la
+// llave del sitio la marca en esas páginas (y sus subdominios) y solo ahí se puede rellenar el login.
 type Cred struct {
-	ID    string `json:"id"`
-	Label string `json:"label"`
+	ID     string `json:"id"`
+	Label  string `json:"label"`
+	Domain string `json:"domain,omitempty"`
 }
 
 // CredData son los datos de una credencial (lo que va al keyring).
@@ -35,10 +38,40 @@ type CredData struct {
 type CredInput struct {
 	ID           string `json:"id"`
 	Label        string `json:"label"`
+	Domain       string `json:"domain"`
 	Account      string `json:"account"`
 	User         string `json:"user"`
 	Password     string `json:"password"`
 	KeepPassword bool   `json:"keepPassword"`
+}
+
+var (
+	domainRe = regexp.MustCompile(`^[a-z0-9-]+(\.[a-z0-9-]+)*$`)
+	portRe   = regexp.MustCompile(`^[0-9]+$`)
+)
+
+// NormalizeCredDomain deja el dominio de una credencial como host en minúsculas. Acepta una dirección
+// entera ("https://panel.x.com/login" → "panel.x.com"), con puerto, o con "*." adelante. Vacío es válido
+// (credencial sin dominio).
+func NormalizeCredDomain(s string) (string, error) {
+	s = strings.ToLower(strings.TrimSpace(s))
+	if s == "" {
+		return "", nil
+	}
+	if i := strings.Index(s, "://"); i >= 0 {
+		s = s[i+3:]
+	}
+	if i := strings.IndexAny(s, "/?#"); i >= 0 {
+		s = s[:i]
+	}
+	if i := strings.LastIndex(s, ":"); i >= 0 && portRe.MatchString(s[i+1:]) {
+		s = s[:i]
+	}
+	s = strings.Trim(strings.TrimPrefix(s, "*."), ".")
+	if !domainRe.MatchString(s) {
+		return "", i18n.Err("data.siteCredBadDomain")
+	}
+	return s, nil
 }
 
 // credKey es el nombre de la entrada del keyring de una credencial (no choca con los uuid de las conexiones).
@@ -79,29 +112,6 @@ func (s *Store) saveCredsLocked() error {
 	return os.Rename(tmp, s.credsPath())
 }
 
-func readCred(id string) (CredData, error) {
-	v, err := secretGet(keyringService, credKey(id))
-	if err != nil {
-		return CredData{}, i18n.Err("data.couldnTReadTheSiteCred", err)
-	}
-	var d CredData
-	if err := json.Unmarshal([]byte(v), &d); err != nil {
-		return CredData{}, i18n.Err("data.couldnTReadTheSiteCred", err)
-	}
-	return d, nil
-}
-
-func writeCred(id string, d CredData) error {
-	b, err := json.Marshal(d)
-	if err != nil {
-		return err
-	}
-	if err := secretSet(keyringService, credKey(id), string(b)); err != nil {
-		return i18n.Err("data.couldnTSaveTheSecret", err)
-	}
-	return nil
-}
-
 func (s *Store) credIndexLocked(id string) int {
 	for i, c := range s.creds {
 		if c.ID == id {
@@ -132,8 +142,12 @@ func (s *Store) addCredLocked(in CredInput) (Cred, error) {
 	if err != nil {
 		return Cred{}, err
 	}
-	c := Cred{ID: uuid.NewString(), Label: label}
-	if err := writeCred(c.ID, CredData{Account: in.Account, User: in.User, Password: in.Password}); err != nil {
+	domain, err := NormalizeCredDomain(in.Domain)
+	if err != nil {
+		return Cred{}, err
+	}
+	c := Cred{ID: uuid.NewString(), Label: label, Domain: domain}
+	if err := s.writeCred(c.ID, CredData{Account: in.Account, User: in.User, Password: in.Password}); err != nil {
 		return Cred{}, err
 	}
 	s.creds = append(s.creds, c)
@@ -172,18 +186,22 @@ func (s *Store) SaveCred(in CredInput) (Cred, error) {
 	if err != nil {
 		return Cred{}, err
 	}
+	domain, err := NormalizeCredDomain(in.Domain)
+	if err != nil {
+		return Cred{}, err
+	}
 	d := CredData{Account: in.Account, User: in.User, Password: in.Password}
 	if in.KeepPassword && in.Password == "" {
-		prev, err := readCred(in.ID)
+		prev, err := s.readCred(in.ID)
 		if err != nil {
 			return Cred{}, err
 		}
 		d.Password = prev.Password
 	}
-	if err := writeCred(in.ID, d); err != nil {
+	if err := s.writeCred(in.ID, d); err != nil {
 		return Cred{}, err
 	}
-	c := Cred{ID: in.ID, Label: label}
+	c := Cred{ID: in.ID, Label: label, Domain: domain}
 	s.creds = append([]Cred{}, old...)
 	s.creds[i] = c
 	if err := s.saveCredsLocked(); err != nil {
@@ -201,7 +219,7 @@ func (s *Store) CredData(id string) (CredData, error) {
 	if i < 0 {
 		return CredData{}, i18n.Err("data.siteCredDoesNotExist")
 	}
-	return readCred(id)
+	return s.readCred(id)
 }
 
 // DeleteCred quita la credencial y la borra del keyring.

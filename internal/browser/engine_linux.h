@@ -8,6 +8,7 @@
 extern void osatRunIdle(uintptr_t job);
 extern void osatEvent(char *id, char *kind, char *url, char *title, int canBack, int canFwd);
 extern void osatViewDestroyed(char *id, void *view);
+extern void osatEvalDone(uintptr_t job, char *json, char *err);
 
 // Todo esto se llama desde el hilo de GTK, salvo osat_post, osat_try_acquire y osat_release.
 void osat_post(uintptr_t job);
@@ -21,6 +22,7 @@ void osat_view_back(GtkWidget *view);
 void osat_view_forward(GtkWidget *view);
 void osat_view_reload(GtkWidget *view);
 void osat_view_close(GtkWidget *view);
+void osat_view_eval(GtkWidget *view, const char *script, uintptr_t job);
 void osat_release_context(void);
 
 #endif
