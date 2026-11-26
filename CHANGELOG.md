@@ -4,12 +4,22 @@ Todos los cambios importantes de osat se anotan acá.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
-## [Sin publicar]
+## [1.1.6-beta.1] - 2026-11-26
+
+Versión beta: trae cambios que todavía se están probando.
 
 ### Agregado
 
-- **Shells persistentes**: terminales SSH que siguen corriendo en el servidor aunque cierres la pestaña, cierres osat o se corte la red, con tmux por debajo y sin tener que usarlo. Con clic derecho sobre un servidor → *Nueva shell persistente…*, elegís el nombre y listo. Debajo del servidor, en la barra lateral, aparecen todas las del servidor (las tuyas, las de otros osat y las sesiones de tmux armadas a mano), con su dueño y cuánta gente hay adentro; un clic las vuelve a abrir con el historial reciente y el scroll normal. Se pueden renombrar (renombra la sesión de tmux, todos ven el nombre nuevo), terminar, o abrir *solo para mirar* (tmux 3.1 o más nuevo). Si hay alguien adentro, osat avisa antes de entrar. Los espacios de trabajo y la reconexión automática vuelven a la misma shell. Necesita tmux 3.0 o más nuevo en el servidor.
+- **Shells persistentes**: terminales SSH que siguen corriendo en el servidor aunque cierres la pestaña, cierres osat o se corte la red, con tmux por debajo y sin tener que usarlo. Con clic derecho sobre un servidor → *Nueva shell persistente…*, elegís el nombre y listo. Debajo del servidor, en la barra lateral, aparecen todas las del servidor (las tuyas, las de otros osat y las sesiones de tmux armadas a mano), con cuánta gente hay adentro; un clic las vuelve a abrir con el historial reciente y el scroll normal. Se pueden renombrar (renombra la sesión de tmux, todos ven el nombre nuevo), terminar, o abrir *solo para mirar* (tmux 3.1 o más nuevo). Si hay alguien adentro, osat avisa antes de entrar. Los espacios de trabajo y la reconexión automática vuelven a la misma shell. Necesita tmux 3.0 o más nuevo en el servidor.
+- **Rellenar el login de los sitios con tus credenciales**: cada credencial tiene ahora un *dominio* (al crearla desde un sitio viene con el de la página). Al abrir el login de un sitio que tiene una sola credencial para su dominio, osat la escribe sola, sin enviar el formulario y sin pisar lo que ya escribiste. Si hay varias, se abre el panel de credenciales para elegir con *Rellenar*. La llave de la barra muestra un punto cuando hay credenciales para la página. Si en un sitio no lo querés, cerrá el panel: en esa pestaña no vuelve a rellenar ni a abrirse solo.
 
+### Cambiado
+
+- **Las credenciales de los sitios van en un panel al costado de la página**, que se achica sin quedar tapada, en lugar de la franja de arriba. Muestra todas: primero las de la página, con cuenta, usuario y contraseña para copiar. Desde ahí se agregan, editan y borran.
+
+### Seguridad
+
+- **Las credenciales de los sitios se guardan cifradas** en el almacén de credenciales del sistema, con una clave propia de esta PC: otra aplicación que lea el almacén ya no las ve en texto plano. Las que ya tenías se cifran solas al abrir osat, sin pedir nada. Si la carpeta de datos de osat pasa a otra PC, las credenciales quedan en la lista para volver a cargarlas (o pasalas con un `.osat`).
 ## [1.1.5-beta.1] - 2026-11-21
 
 Versión beta: trae cambios que todavía se están probando.

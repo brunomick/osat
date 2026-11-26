@@ -4,6 +4,22 @@ The important changes in osat, in English. Versions before 0.4.0 are only in the
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.1.6-beta.1] - 2026-11-26
+
+Beta version: it brings changes that are still being tested.
+
+### Added
+
+- **Persistent shells**: SSH terminals that keep running on the server even if you close the tab, close osat or the network drops, with tmux underneath and without having to use it. Right-click a server → *New persistent shell…*, pick a name and that's it. Under the server, in the sidebar, you see all of the server's shells (yours, other osats' and tmux sessions made by hand), with how many people are inside; one click opens them again with the recent history and normal scrolling. You can rename them (it renames the tmux session, everyone sees the new name), end them, or open them *view only* (tmux 3.1 or newer). If someone is inside, osat warns you before going in. Workspaces and automatic reconnection go back to the same shell. Needs tmux 3.0 or newer on the server.
+- **Fill in sites' logins with your credentials**: each credential now has a *domain* (when you create it from a site it comes with the page's). When you open the login of a site that has a single credential for its domain, osat types it in by itself, without submitting the form and without overwriting what you already typed. If there are several, the credentials panel opens so you can pick one with *Fill in*. The key in the bar shows a dot when there are credentials for the page. If you don't want it on a site, close the panel: in that tab it won't fill in or open by itself again.
+
+### Changed
+
+- **Site credentials are in a panel beside the page**, which shrinks without being covered, instead of the strip at the top. It shows all of them: the page's first, with account, user and password to copy. You add, edit and delete them from there.
+
+### Security
+
+- **Site credentials are stored encrypted** in the system credential store, with a key of this PC: another application that reads the store no longer sees them in plain text. The ones you already had are encrypted by themselves when osat opens, without asking anything. If osat's data folder moves to another PC, the credentials stay in the list so you can enter them again (or move them with a `.osat`).
 ## [1.1.5-beta.1] - 2026-11-21
 
 Beta version: it brings changes that are still being tested.
