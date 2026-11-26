@@ -1,0 +1,19 @@
+// vite.config.ts
+import { defineConfig } from "file:///C:/Users/btm/Desktop/osat-v030/frontend/node_modules/vitest/dist/config.js";
+import { svelte } from "file:///C:/Users/btm/Desktop/osat-v030/frontend/node_modules/@sveltejs/vite-plugin-svelte/src/index.js";
+var vite_config_default = defineConfig({
+  plugins: [svelte()],
+  // noVNC usa un await de nivel superior (ES2022): el destino por defecto de Vite (chrome87, safari14) no lo admite.
+  // WebView2, WebKitGTK 4.1 y el WKWebView de macOS actuales sí.
+  build: { target: "es2022" },
+  // Lo mismo para el pre-empaquetado de dependencias de `npm run dev` / `wails dev`.
+  optimizeDeps: { esbuildOptions: { target: "es2022" } },
+  test: {
+    environment: "node",
+    include: ["src/**/*.test.ts"]
+  }
+});
+export {
+  vite_config_default as default
+};
+//# sourceMappingURL=data:application/json;base64,ewogICJ2ZXJzaW9uIjogMywKICAic291cmNlcyI6IFsidml0ZS5jb25maWcudHMiXSwKICAic291cmNlc0NvbnRlbnQiOiBbImNvbnN0IF9fdml0ZV9pbmplY3RlZF9vcmlnaW5hbF9kaXJuYW1lID0gXCJDOlxcXFxVc2Vyc1xcXFxidG1cXFxcRGVza3RvcFxcXFxvc2F0LXYwMzBcXFxcZnJvbnRlbmRcIjtjb25zdCBfX3ZpdGVfaW5qZWN0ZWRfb3JpZ2luYWxfZmlsZW5hbWUgPSBcIkM6XFxcXFVzZXJzXFxcXGJ0bVxcXFxEZXNrdG9wXFxcXG9zYXQtdjAzMFxcXFxmcm9udGVuZFxcXFx2aXRlLmNvbmZpZy50c1wiO2NvbnN0IF9fdml0ZV9pbmplY3RlZF9vcmlnaW5hbF9pbXBvcnRfbWV0YV91cmwgPSBcImZpbGU6Ly8vQzovVXNlcnMvYnRtL0Rlc2t0b3Avb3NhdC12MDMwL2Zyb250ZW5kL3ZpdGUuY29uZmlnLnRzXCI7aW1wb3J0IHsgZGVmaW5lQ29uZmlnIH0gZnJvbSAndml0ZXN0L2NvbmZpZydcbmltcG9ydCB7IHN2ZWx0ZSB9IGZyb20gJ0BzdmVsdGVqcy92aXRlLXBsdWdpbi1zdmVsdGUnXG5cbmV4cG9ydCBkZWZhdWx0IGRlZmluZUNvbmZpZyh7XG4gIHBsdWdpbnM6IFtzdmVsdGUoKV0sXG4gIC8vIG5vVk5DIHVzYSB1biBhd2FpdCBkZSBuaXZlbCBzdXBlcmlvciAoRVMyMDIyKTogZWwgZGVzdGlubyBwb3IgZGVmZWN0byBkZSBWaXRlIChjaHJvbWU4Nywgc2FmYXJpMTQpIG5vIGxvIGFkbWl0ZS5cbiAgLy8gV2ViVmlldzIsIFdlYktpdEdUSyA0LjEgeSBlbCBXS1dlYlZpZXcgZGUgbWFjT1MgYWN0dWFsZXMgc1x1MDBFRC5cbiAgYnVpbGQ6IHsgdGFyZ2V0OiAnZXMyMDIyJyB9LFxuICAvLyBMbyBtaXNtbyBwYXJhIGVsIHByZS1lbXBhcXVldGFkbyBkZSBkZXBlbmRlbmNpYXMgZGUgYG5wbSBydW4gZGV2YCAvIGB3YWlscyBkZXZgLlxuICBvcHRpbWl6ZURlcHM6IHsgZXNidWlsZE9wdGlvbnM6IHsgdGFyZ2V0OiAnZXMyMDIyJyB9IH0sXG4gIHRlc3Q6IHtcbiAgICBlbnZpcm9ubWVudDogJ25vZGUnLFxuICAgIGluY2x1ZGU6IFsnc3JjLyoqLyoudGVzdC50cyddLFxuICB9LFxufSlcbiJdLAogICJtYXBwaW5ncyI6ICI7QUFBbVQsU0FBUyxvQkFBb0I7QUFDaFYsU0FBUyxjQUFjO0FBRXZCLElBQU8sc0JBQVEsYUFBYTtBQUFBLEVBQzFCLFNBQVMsQ0FBQyxPQUFPLENBQUM7QUFBQTtBQUFBO0FBQUEsRUFHbEIsT0FBTyxFQUFFLFFBQVEsU0FBUztBQUFBO0FBQUEsRUFFMUIsY0FBYyxFQUFFLGdCQUFnQixFQUFFLFFBQVEsU0FBUyxFQUFFO0FBQUEsRUFDckQsTUFBTTtBQUFBLElBQ0osYUFBYTtBQUFBLElBQ2IsU0FBUyxDQUFDLGtCQUFrQjtBQUFBLEVBQzlCO0FBQ0YsQ0FBQzsiLAogICJuYW1lcyI6IFtdCn0K

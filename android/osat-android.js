@@ -1,4 +1,4 @@
-// Puente de osat en Android: arma window.go.main.App y window.runtime (lo que en escritorio pone
+// Puente de osat en Android: arma window.go.app.App y window.runtime (lo que en escritorio pone
 // Wails) sobre el servidor local de main_android.go. Lo nativo de Android (portapapeles, enlaces,
 // elegir archivos) va por window.OsatAndroid, que agrega la app en MainActivity.kt.
 ;(function () {
@@ -62,7 +62,7 @@
       },
     },
   )
-  window.go = { main: { App: App } }
+  window.go = { app: { App: App } }
 
   // ---- eventos ----
   var listeners = {}

@@ -5,4 +5,4 @@
 *.bat text eol=crlf
 
 # El manual trae sus capturas incrustadas (6 MB): que GitHub no lo cuente como código.
-osat-manual.html linguist-documentation
+docs/manual.html linguist-documentation

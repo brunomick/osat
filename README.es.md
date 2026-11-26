@@ -72,7 +72,7 @@ Las conexiones, los ajustes y los logs se guardan en `%APPDATA%\osat\` (Windows)
 
 ## Contribuir
 
-Los reportes de errores, las ideas y los pull requests son bienvenidos: ver [CONTRIBUTING.md](CONTRIBUTING.md). Las vulnerabilidades se reportan en privado, como dice [SECURITY.md](SECURITY.md).
+Los reportes de errores, las ideas y los pull requests son bienvenidos: ver [CONTRIBUTING.md](.github/CONTRIBUTING.md). Las vulnerabilidades se reportan en privado, como dice [SECURITY.md](.github/SECURITY.md).
 
 ## Licencia
 

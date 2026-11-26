@@ -1,4 +1,4 @@
-// Capa fina sobre los bindings de Wails (window.go.main.App) y el runtime
+// Capa fina sobre los bindings de Wails (window.go.app.App, el App de internal/app) y el runtime
 // (window.runtime). La usamos en lugar de los archivos autogenerados en
 // /wailsjs para tener tipos propios y no depender de la generación.
 
@@ -659,7 +659,7 @@ declare global {
 }
 
 const app = () => {
-  const a = window.go?.main?.App
+  const a = window.go?.app?.App
   if (!a) throw new Error(tr('api.noBackend'))
   return a
 }

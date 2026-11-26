@@ -39,4 +39,4 @@ body:
       render: text
   - type: markdown
     attributes:
-      value: Found a security problem? Please report it privately instead, as described in SECURITY.md.
+      value: Found a security problem? Please report it privately instead, as described in .github/SECURITY.md.

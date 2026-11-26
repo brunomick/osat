@@ -29,6 +29,7 @@ import (
 
 	"github.com/gorilla/websocket"
 
+	"osat/internal/app"
 	"osat/internal/applog"
 	"osat/internal/i18n"
 	"osat/internal/settings"
@@ -51,6 +52,7 @@ func main() {
 		time.Local = loc
 	}
 
+	app.SetResources(resources()) // antes de todo: de ahí sale la versión
 	dir, err := store.ConfigDir()
 	cfg := settings.Defaults()
 	var cfgErr error
@@ -62,7 +64,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, "osat: no se pudo abrir el archivo de log:", err)
 	}
 	i18n.SetLanguage(cfg.General.Language)
-	slog.Info("arranque", "version", appVersion(), "os", runtime.GOOS, "arch", runtime.GOARCH, "dir", dir)
+	slog.Info("arranque", "version", app.Version(), "os", runtime.GOOS, "arch", runtime.GOARCH, "dir", dir)
 	if cfgErr != nil {
 		slog.Warn("no se pudieron leer los ajustes, se usan los valores por defecto", "err", cfgErr)
 	}
@@ -77,13 +79,13 @@ func main() {
 		fmt.Fprintln(os.Stderr, "osat: falta OSAT_BRIDGE_KEY")
 		os.Exit(2)
 	}
-	app, err := NewApp(cfg)
+	a, err := app.NewApp(cfg)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "osat:", err)
 		os.Exit(1)
 	}
 	ctx := context.Background()
-	app.startup(ctx)
+	app.Startup(a, ctx)
 
 	ln, err := listen()
 	if err != nil {
@@ -95,12 +97,12 @@ func main() {
 
 	go func() {
 		io.Copy(io.Discard, bufio.NewReader(os.Stdin))
-		app.shutdown(ctx)
+		app.Shutdown(a, ctx)
 		os.Exit(0)
 	}()
 
 	slog.Info("servidor de Android", "addr", ln.Addr().String())
-	if err := http.Serve(ln, newMux(app, token, bridgeKey)); err != nil {
+	if err := http.Serve(ln, newMux(a, token, bridgeKey)); err != nil {
 		slog.Error("servidor de Android", "err", err)
 	}
 }
@@ -122,7 +124,7 @@ func listen() (net.Listener, error) {
 	return net.Listen("tcp", "127.0.0.1:0")
 }
 
-func newMux(app *App, token, bridgeKey string) http.Handler {
+func newMux(a *app.App, token, bridgeKey string) http.Handler {
 	keyJS, _ := json.Marshal(bridgeKey)
 	head := []byte(`<head><script>window.__osatBridgeKey=` + string(keyJS) + `</script><script src="/osat-android.js"></script>`)
 	dist, _ := fs.Sub(assets, "frontend/dist")
@@ -143,7 +145,7 @@ func newMux(app *App, token, bridgeKey string) http.Handler {
 			http.Error(w, "bad request", http.StatusBadRequest)
 			return
 		}
-		res, err := callMethod(app, req.M, req.A)
+		res, err := callMethod(a, req.M, req.A)
 		w.Header().Set("Content-Type", "application/json")
 		if err != nil {
 			json.NewEncoder(w).Encode(map[string]string{"e": err.Error()})
@@ -160,15 +162,15 @@ func newMux(app *App, token, bridgeKey string) http.Handler {
 			http.Error(w, "bad request", http.StatusBadRequest)
 			return
 		}
-		pickDone(req.ID, req.Paths)
+		app.PickDone(req.ID, req.Paths)
 	})
 	mux.HandleFunc("/events", func(w http.ResponseWriter, r *http.Request) {
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
 			return
 		}
-		c := hub.add()
-		defer hub.remove(c)
+		c := app.SubscribeEvents()
+		defer app.UnsubscribeEvents(c)
 		go func() { // solo para enterarse de que se cerró
 			for {
 				if _, _, err := conn.NextReader(); err != nil {
@@ -238,8 +240,8 @@ var errorType = reflect.TypeOf((*error)(nil)).Elem()
 
 // callMethod llama a un método exportado de App como lo haría Wails: los argumentos llegan en JSON,
 // vuelve el resultado que no es error, y un error rechaza la llamada con su texto.
-func callMethod(app *App, name string, args []json.RawMessage) (interface{}, error) {
-	m := reflect.ValueOf(app).MethodByName(name)
+func callMethod(a *app.App, name string, args []json.RawMessage) (interface{}, error) {
+	m := reflect.ValueOf(a).MethodByName(name)
 	if !m.IsValid() {
 		return nil, fmt.Errorf("método desconocido: %s", name)
 	}

@@ -3,6 +3,7 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"fmt"
 	"log"
@@ -18,6 +19,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/mac"
 	"github.com/wailsapp/wails/v2/pkg/options/windows"
 
+	"osat/internal/app"
 	"osat/internal/applog"
 	"osat/internal/i18n"
 	"osat/internal/settings"
@@ -41,6 +43,7 @@ func main() {
 
 	// Primero los ajustes (sin registrar nada: el log todavía no existe), después el log con
 	// su nivel y recién ahí lo que haya que contar. Si el log no se puede abrir, osat sigue sin él.
+	app.SetResources(resources()) // antes de todo: de ahí sale la versión
 	dir, err := store.ConfigDir()
 	cfg := settings.Defaults()
 	var cfgErr error
@@ -52,12 +55,12 @@ func main() {
 		fmt.Fprintln(os.Stderr, "osat: no se pudo abrir el archivo de log:", err)
 	}
 	i18n.SetLanguage(cfg.General.Language) // antes de wails.Run: los textos de Go salen en el idioma elegido
-	slog.Info("arranque", "version", appVersion(), "os", runtime.GOOS, "arch", runtime.GOARCH, "dir", dir)
+	slog.Info("arranque", "version", app.Version(), "os", runtime.GOOS, "arch", runtime.GOARCH, "dir", dir)
 	if cfgErr != nil {
 		slog.Warn("no se pudieron leer los ajustes, se usan los valores por defecto", "err", cfgErr)
 	}
 
-	app, err := NewApp(cfg)
+	a, err := app.NewApp(cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -85,19 +88,19 @@ func main() {
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
-		BackgroundColour: windowBackground(cfg.General.Appearance), // el --bg del tema elegido
-		OnStartup:        app.startup,
-		OnShutdown:       app.shutdown,
+		BackgroundColour: app.WindowBackground(cfg.General.Appearance), // el --bg del tema elegido
+		OnStartup:        func(ctx context.Context) { app.Startup(a, ctx) },
+		OnShutdown:       func(ctx context.Context) { app.Shutdown(a, ctx) },
 		DragAndDrop: &options.DragAndDrop{
 			EnableFileDrop:     true,
 			DisableWebViewDrop: true,
 		},
 		Menu: appMenu,
 		Bind: []interface{}{
-			app,
+			a,
 		},
 		Windows: &windows.Options{
-			Theme: startupWindowTheme(cfg.General.Appearance),
+			Theme: app.StartupWindowTheme(cfg.General.Appearance),
 		},
 		Mac: &mac.Options{
 			TitleBar: mac.TitleBarHidden(),
