@@ -22,6 +22,10 @@ type Site struct {
 	Name  string `json:"name"`
 	URL   string `json:"url"` // solo http:// o https://
 	Order int    `json:"order"`
+	// Icon es el ícono de la página (data: URL) e IconAt cuándo se intentó bajar por última vez (Unix, segundos).
+	// Los pone SetSiteIcon (app_siteicon.go); SaveSite los conserva mientras no cambie el host.
+	Icon   string `json:"icon,omitempty"`
+	IconAt int64  `json:"iconAt,omitempty"`
 }
 
 // Validate normaliza y comprueba el sitio.
@@ -126,12 +130,37 @@ func (s *Store) SaveSite(st Site) (Site, error) {
 			return Site{}, i18n.Err("data.siteDoesNotExist")
 		}
 		st.Order = old.Order
+		if siteHost(old.URL) == siteHost(st.URL) {
+			st.Icon, st.IconAt = old.Icon, old.IconAt
+		}
 	}
 	if s.sites == nil {
 		s.sites = map[string]Site{}
 	}
 	s.sites[st.ID] = st
 	return st, s.saveSitesLocked()
+}
+
+// siteHost es el host de una dirección ya validada, en minúsculas.
+func siteHost(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return ""
+	}
+	return strings.ToLower(u.Hostname())
+}
+
+// SetSiteIcon guarda el ícono del sitio id (data: URL; vacío = no tiene) y cuándo se buscó.
+func (s *Store) SetSiteIcon(id, icon string, at int64) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	st, ok := s.sites[id]
+	if !ok {
+		return i18n.Err("data.siteDoesNotExist")
+	}
+	st.Icon, st.IconAt = icon, at
+	s.sites[id] = st
+	return s.saveSitesLocked()
 }
 
 func (s *Store) DeleteSite(id string) error {

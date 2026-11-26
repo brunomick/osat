@@ -258,6 +258,8 @@ export interface Site {
   name: string
   url: string
   order: number
+  /** Ícono de la página (data: URL), si ya se bajó. */
+  icon?: string
 }
 
 /** Credencial para los sitios web: acá solo la etiqueta y el dominio; los datos están en el almacén del sistema (credGet). */
@@ -939,6 +941,8 @@ export const api = {
   siteDelete: (id: string): Promise<void> => app().SiteDelete(id),
   /** Mueve el sitio antes de beforeId ("" = al final). */
   sitePlace: (id: string, beforeId: string): Promise<void> => app().SitePlace(id, beforeId),
+  /** Busca el ícono del sitio guardado en la página de la pestaña tabId, si hace falta. Devuelve si cambió. */
+  siteIconRefresh: (tabId: string, siteId: string): Promise<boolean> => app().SiteIconRefresh(tabId, siteId),
   credsList: (): Promise<Cred[]> => app().CredsList(),
   credSave: (c: CredInput): Promise<Cred> => app().CredSave(c),
   /** Falla si osat está bloqueado. */

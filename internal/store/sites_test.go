@@ -147,3 +147,27 @@ func TestImportSitesSkipsSameURL(t *testing.T) {
 		t.Fatalf("sitios = %q", got)
 	}
 }
+
+// El ícono se guarda aparte (SetSiteIcon), queda al reiniciar y editar el nombre no lo borra; cambiar de host sí.
+func TestSiteIcon(t *testing.T) {
+	s := newTestStore(t)
+	st := mustSaveSite(t, s, "Panel", "https://panel.empresa.com/login")
+	if err := s.SetSiteIcon(st.ID, "data:image/png;base64,AAAA", 100); err != nil {
+		t.Fatal(err)
+	}
+	got := reloadSites(t, s).Sites()[0]
+	if got.Icon != "data:image/png;base64,AAAA" || got.IconAt != 100 {
+		t.Fatalf("recargado = %+v", got)
+	}
+	st, err := s.SaveSite(Site{ID: st.ID, Name: "Panel nuevo", URL: "https://panel.empresa.com/otra"})
+	if err != nil || st.Icon == "" || st.IconAt != 100 {
+		t.Fatalf("al renombrar: %+v, %v", st, err)
+	}
+	st, err = s.SaveSite(Site{ID: st.ID, Name: "Panel nuevo", URL: "https://otro.com/"})
+	if err != nil || st.Icon != "" || st.IconAt != 0 {
+		t.Fatalf("al cambiar de host: %+v, %v", st, err)
+	}
+	if err := s.SetSiteIcon("no-existe", "x", 1); err == nil {
+		t.Fatal("ícono de un sitio inexistente")
+	}
+}

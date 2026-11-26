@@ -102,7 +102,7 @@
       if (u) openSite(u)
       return
     }
-    if (ev.kind === 'loaded') offerCreds()
+    if (ev.kind === 'loaded') offerCreds(), refreshIcon()
     if (ev.kind === 'error') {
       error = tr('site.loadError', { url: ev.url })
       return
@@ -231,6 +231,18 @@
 
   $: if ($locked) offer = false
 
+  /** El ícono de un sitio guardado (el de esta pestaña, si no se dice): Go lo busca en la página si hace falta (no tiene,
+   * o es viejo). */
+  function refreshIcon(siteId = saved?.id) {
+    if (!siteId) return
+    api
+      .siteIconRefresh(id, siteId)
+      .then((changed) => {
+        if (changed) return reloadSites()
+      })
+      .catch(() => {})
+  }
+
   /** La estrella: agrega la página a los sitios guardados (con el título de la página) o la quita. */
   async function toggleSaved() {
     const s = saved
@@ -241,6 +253,7 @@
       } else {
         const n = await api.siteSave({ name: title || siteHost(url), url })
         patchTab(id, { siteId: n.id })
+        refreshIcon(n.id)
       }
       await reloadSites()
     })

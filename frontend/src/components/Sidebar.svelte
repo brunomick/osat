@@ -888,7 +888,9 @@
             on:keydown={(e) => e.target === e.currentTarget && e.key === 'Enter' && openSite(s.url, s.name, s.id)}
             on:contextmenu={(e) => siteMenu(e, s)}
           >
-            <span class="ficon"><Icon name="globe" size={13} /></span>
+            <span class="ficon">
+              {#if s.icon}<img class="favicon" src={s.icon} alt="" />{:else}<Icon name="globe" size={13} />{/if}
+            </span>
             <span class="name">{s.name}</span>
           </div>
         {/each}
@@ -1279,6 +1281,12 @@
   .item.local .ficon,
   .item.site .ficon {
     margin-right: 8px;
+  }
+  /* El ícono de la página, del tamaño del globo que reemplaza. */
+  .favicon {
+    width: 13px;
+    height: 13px;
+    object-fit: contain;
   }
   /* El encabezado de Sitios lleva el "+" a la derecha. */
   .sitehead .icon {
