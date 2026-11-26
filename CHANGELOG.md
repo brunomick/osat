@@ -4,6 +4,15 @@ Todos los cambios importantes de osat se anotan acá.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
+## [1.2.0] - 2026-11-26
+
+### Cambiado
+
+- Ordeno todo el sida.
+
+### Agregado
+
+- **Los sitios guardados muestran el ícono de su página** en la barra lateral, en lugar del globo. osat lo toma de la página al abrirla o al guardarla con la estrella, lo baja sin cookies ni servicios de terceros y lo renueva una vez por semana.
 ## [1.1.6-beta.1] - 2026-11-26
 
 Versión beta: trae cambios que todavía se están probando.

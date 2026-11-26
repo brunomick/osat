@@ -4,6 +4,15 @@ The important changes in osat, in English. Versions before 0.4.0 are only in the
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.2.0] - 2026-11-26
+
+### Changed
+
+- Tidied up the whole mess.
+
+### Added
+
+- **Saved sites show their page's icon** in the sidebar, instead of the globe. osat takes it from the page when you open it or save it with the star, downloads it without cookies or third-party services, and renews it once a week.
 ## [1.1.6-beta.1] - 2026-11-26
 
 Beta version: it brings changes that are still being tested.

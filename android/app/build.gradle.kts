@@ -14,8 +14,8 @@ android {
         applicationId = "ar.osat"
         minSdk = 26
         targetSdk = 35
-        versionCode = 17
-        versionName = "1.1.6-beta.1"
+        versionCode = 18
+        versionName = "1.2.0"
     }
 
     buildTypes {
