@@ -4,6 +4,12 @@ Todos los cambios importantes de osat se anotan acá.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
+## [1.2.1] - 2026-11-27
+
+### Agregado
+
+- **Abrir como root las carpetas sin permiso** en el explorador de archivos. Si el servidor no te deja entrar a una carpeta, osat ofrece abrirla con sudo, igual que ya hacía al editar un archivo, y pide la contraseña si hace falta. Después de aceptar una vez, las otras carpetas sin permiso de esa pestaña se abren así sin volver a preguntar. Necesita el find de GNU en el servidor.
+
 ## [1.2.0] - 2026-11-26
 
 ### Cambiado

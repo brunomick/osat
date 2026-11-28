@@ -4,6 +4,12 @@ The important changes in osat, in English. Versions before 0.4.0 are only in the
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.2.1] - 2026-11-27
+
+### Added
+
+- **Open folders you don't have permission for as root** in the file explorer. If the server won't let you into a folder, osat offers to open it with sudo, just like it already did when editing a file, and asks for the password if needed. Once you accept, other folders without permission in that tab open the same way without asking again. Requires GNU find on the server.
+
 ## [1.2.0] - 2026-11-26
 
 ### Changed
