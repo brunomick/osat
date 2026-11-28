@@ -486,6 +486,11 @@ func (a *App) SftpSudoWriteText(id, p, content, password string) error {
 	return a.mgr.SudoWriteText(id, p, content, password)
 }
 
+// SftpSudoList lista como root una carpeta sin permiso por SFTP.
+func (a *App) SftpSudoList(id, dir, password string) (remote.Listing, error) {
+	return a.mgr.SudoList(id, dir, password)
+}
+
 // SftpDragOut baja los archivos a una carpeta temporal y arranca un arrastre
 // nativo del sistema con ellos (para soltarlos en el Explorador o el
 // escritorio). Bloquea hasta que se suelta. Devuelve false si se canceló.

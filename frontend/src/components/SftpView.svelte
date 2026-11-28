@@ -16,7 +16,7 @@
   import { isMac, keys } from '../lib/platform'
   import { moveErrorText, transfer } from '../lib/transfer'
   import { canPaste, copyFiles, fileClip, pasteFromSystem, refreshSystemFiles, systemFiles } from '../lib/fileclip'
-  import { askRoot, isPermissionError } from '../lib/sudo'
+  import { askRoot, isPermissionError, withSudoPassword } from '../lib/sudo'
   import { get } from 'svelte/store'
   import {
     activeTabId,
@@ -153,12 +153,16 @@
   // Misma normalización que el backend (path.Clean) para rutas absolutas simples.
   const key = (dir: string) => (dir.startsWith('/') ? dir.replace(/\/+/g, '/').replace(/(.)\/$/, '$1') : dir)
 
-  function list(dir: string): Promise<Listing> {
+  // Ya se aceptó abrir como root una carpeta sin permiso: las siguientes se abren así sin preguntar.
+  let asRoot = false
+
+  /** root: listar con sudo (ver lib/sudo.ts); pide la contraseña si hace falta. */
+  function list(dir: string, root = false): Promise<Listing> {
     const k = key(dir)
     const pending = inflight.get(k)
     if (pending) return pending
-    const p = api
-      .sftpList(sessionId!, dir)
+    const sid = sessionId!
+    const p = (root ? withSudoPassword((pw) => api.sftpSudoList(sid, dir, pw)) : api.sftpList(sid, dir))
       .then((l) => {
         l.entries ??= []
         cache.delete(l.path) // reinsertar: la más reciente queda al final
@@ -210,7 +214,13 @@
     if (hit) show(hit, pushHistory)
     loading = !hit
     try {
-      const l = await list(dir)
+      const l = await list(dir).catch(async (e) => {
+        // Sin permiso por SFTP: se ofrece abrirla como root.
+        if (!isPermissionError(e) || !(asRoot || (await askRoot('list'))) || seq !== navSeq) throw e
+        const r = await list(dir, true)
+        asRoot = true
+        return r
+      })
       if (seq !== navSeq) return
       show(l, pushHistory && !hit)
     } catch (e) {

@@ -729,6 +729,7 @@
     "deniedTitle": "Permiso denegado",
     "askRead": "No tenés permiso para leer este archivo. ¿Abrirlo como root con sudo?",
     "askSave": "No tenés permiso para guardar este archivo. ¿Guardar como root con sudo?",
+    "askList": "No tenés permiso para abrir esta carpeta. ¿Abrirla como root con sudo?",
     "openRoot": "Abrir como root",
     "saveRoot": "Guardar como root",
     "passwordTitle": "Contraseña de sudo",
@@ -1260,7 +1261,8 @@
     },
     "PERMISSION": {
       "read": "No tenés permiso para leer este archivo.",
-      "save": "No tenés permiso para guardar este archivo."
+      "save": "No tenés permiso para guardar este archivo.",
+      "list": "No tenés permiso para abrir esta carpeta."
     },
     "SUDO_PASSWORD": {
       "default": "sudo pide la contraseña."

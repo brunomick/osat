@@ -4,18 +4,20 @@ import { tr } from './i18n'
 
 // Editar como root con sudo (ver internal/remote/sudo.go).
 
-/** El backend no pudo leer o guardar por SFTP por falta de permiso (se puede ofrecer sudo). */
+/** El backend no pudo leer, guardar o listar por SFTP por falta de permiso (se puede ofrecer sudo). */
 export const isPermissionError = (e: unknown) => parseError(e)?.code === 'PERMISSION'
 
 /** Pregunta si hacerlo como root después de un permiso denegado. */
-export function askRoot(what: 'read' | 'save') {
+export function askRoot(what: 'read' | 'save' | 'list') {
   return confirmDialog({
     title: tr('sudo.deniedTitle'),
     message:
       what === 'read'
         ? tr('sudo.askRead')
-        : tr('sudo.askSave'),
-    okText: what === 'read' ? tr('sudo.openRoot') : tr('sudo.saveRoot'),
+        : what === 'list'
+          ? tr('sudo.askList')
+          : tr('sudo.askSave'),
+    okText: what === 'save' ? tr('sudo.saveRoot') : tr('sudo.openRoot'),
   })
 }
 

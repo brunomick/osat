@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"path"
 	"strconv"
 	"strings"
 
@@ -31,7 +32,7 @@ const (
 var errSudoNoTimestamp = i18n.Err("remote.thisServerDoesnTRemember")
 
 // permissionErr marca un permiso denegado por SFTP con el código PERMISSION (el frontend ofrece
-// hacerlo como root); los demás errores pasan igual. kind es "read" o "save".
+// hacerlo como root); los demás errores pasan igual. kind es "read", "save" o "list".
 func permissionErr(err error, msg, kind string) error {
 	if err != nil && isPermission(err) {
 		return newErr(CodePermission, msg, map[string]string{"kind": kind})
@@ -184,4 +185,62 @@ func (m *Manager) SudoWriteText(id, p, content, password string) error {
 	return sudoDo(sh, s.shared, password, func() (int, string, error) {
 		return sh.stream(context.Background(), cmd, bytes.NewReader(data), nil)
 	}, nil)
+}
+
+// sudoListCmd lista una carpeta con find (GNU: BusyBox no tiene -printf), un registro por entrada
+// terminado en NUL: permisos como ls, tamaño, fecha, tipo (siguiendo symlinks) y nombre al final, que
+// puede tener cualquier carácter salvo / y NUL. -H: si la carpeta es un symlink, lista adonde apunta.
+func sudoListCmd(dir string) string {
+	return "find -H " + shellQuote(dir) + ` -mindepth 1 -maxdepth 1 -printf '%M\t%s\t%T@\t%Y\t%f\0'`
+}
+
+// parseSudoList convierte la salida de sudoListCmd en entradas. Descarta lo que no tiene la forma
+// esperada (p. ej. lo que imprima el .bashrc del servidor).
+func parseSudoList(out []byte, dir string) []FileEntry {
+	entries := []FileEntry{}
+	for _, rec := range bytes.Split(out, []byte{0}) {
+		f := strings.SplitN(string(rec), "\t", 5)
+		if len(f) != 5 || len(f[0]) != 10 || len(f[3]) != 1 || f[4] == "" {
+			continue
+		}
+		size, err1 := strconv.ParseInt(f[1], 10, 64)
+		sec, _, _ := strings.Cut(f[2], ".")
+		mtime, err2 := strconv.ParseInt(sec, 10, 64)
+		if err1 != nil || err2 != nil {
+			continue
+		}
+		entries = append(entries, FileEntry{
+			Name:    f[4],
+			Path:    path.Join(dir, f[4]),
+			Size:    size,
+			Mode:    f[0],
+			IsDir:   f[3] == "d",
+			IsLink:  f[0][0] == 'l',
+			ModTime: mtime,
+		})
+	}
+	sortEntries(entries)
+	return entries
+}
+
+// SudoList lista como root una carpeta que por SFTP no se puede abrir. dir es una ruta absoluta.
+func (m *Manager) SudoList(id, dir, password string) (Listing, error) {
+	s, sh, err := m.sudoShell(id)
+	if err != nil {
+		return Listing{}, err
+	}
+	dir = path.Clean(dir)
+	cmd := sudoListCmd(dir)
+	var out bytes.Buffer
+	read := func(c string, stdin io.Reader) (int, string, error) {
+		out.Reset()
+		return sh.stream(context.Background(), c, stdin, &out)
+	}
+	err = sudoDo(sh, s.shared, password,
+		func() (int, string, error) { return read(sudoN+cmd, nil) },
+		func(pw string) (int, string, error) { return read(sudoS+cmd, strings.NewReader(pw+"\n")) })
+	if err != nil {
+		return Listing{}, err
+	}
+	return Listing{Path: dir, Entries: parseSudoList(out.Bytes(), dir)}, nil
 }

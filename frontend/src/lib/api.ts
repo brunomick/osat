@@ -846,6 +846,7 @@ export const api = {
   sftpSudoReadText: (id: string, p: string, password: string): Promise<string> => app().SftpSudoReadText(id, p, password),
   sftpSudoWriteText: (id: string, p: string, content: string, password: string): Promise<void> =>
     app().SftpSudoWriteText(id, p, content, password),
+  sftpSudoList: (id: string, dir: string, password: string): Promise<Listing> => app().SftpSudoList(id, dir, password),
   sftpUpload: (id: string, paths: string[], dir: string, policy: ConflictPolicy): Promise<string[]> =>
     app().SftpUpload(id, paths, dir, policy),
   sftpDownload: (id: string, paths: string[], dir: string, policy: ConflictPolicy): Promise<string[]> =>

@@ -69,7 +69,7 @@ func (m *Manager) List(id, dir string) (Listing, error) {
 	if err != nil && m.connCut(id, err) {
 		return l, newErr(CodeServerGone, err.Error(), nil) // el frontend lo reconoce por el código
 	}
-	return l, err
+	return l, permissionErr(err, "No tenés permiso para abrir esta carpeta.", "list")
 }
 
 // Symlinks resueltos a la vez al listar (pkg/sftp admite pedidos concurrentes).
@@ -123,13 +123,18 @@ func listDir(cl *sftp.Client, dir string) (Listing, error) {
 		}(&out[i])
 	}
 	wg.Wait()
+	sortEntries(out)
+	return Listing{Path: dir, Entries: out}, nil
+}
+
+// sortEntries ordena un listado: carpetas primero, después por nombre.
+func sortEntries(out []FileEntry) {
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].IsDir != out[j].IsDir {
 			return out[i].IsDir
 		}
 		return strings.ToLower(out[i].Name) < strings.ToLower(out[j].Name)
 	})
-	return Listing{Path: dir, Entries: out}, nil
 }
 
 func (m *Manager) Mkdir(id, p string) error {

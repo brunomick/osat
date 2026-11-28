@@ -729,6 +729,7 @@
     "deniedTitle": "Permission denied",
     "askRead": "You don't have permission to read this file. Open it as root with sudo?",
     "askSave": "You don't have permission to save this file. Save it as root with sudo?",
+    "askList": "You don't have permission to open this folder. Open it as root with sudo?",
     "openRoot": "Open as root",
     "saveRoot": "Save as root",
     "passwordTitle": "sudo password",
@@ -1260,7 +1261,8 @@
     },
     "PERMISSION": {
       "read": "You don't have permission to read this file.",
-      "save": "You don't have permission to save this file."
+      "save": "You don't have permission to save this file.",
+      "list": "You don't have permission to open this folder."
     },
     "SUDO_PASSWORD": {
       "default": "sudo is asking for the password."

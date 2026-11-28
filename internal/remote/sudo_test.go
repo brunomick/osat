@@ -81,6 +81,9 @@ func (f *fakeSudo) exec(cmd string, stdin []byte, ch ssh.Channel) int {
 	case "tee -- '" + sudoTestFile + "' > /dev/null":
 		f.file = append([]byte(nil), stdin...)
 		return 0
+	case sudoListCmd(sudoTestDir):
+		io.WriteString(ch, sudoTestListing)
+		return 0
 	}
 	io.WriteString(ch.Stderr(), "comando inesperado\n")
 	return 2
@@ -265,6 +268,40 @@ func TestSudoEncodingAndLimit(t *testing.T) {
 	f.mu.Unlock()
 	if _, err := m.SudoReadText("srv", sudoTestFile, ""); !errors.Is(err, errTooBig) {
 		t.Fatalf("más de 2 MB: %v", err)
+	}
+}
+
+const sudoTestDir = "/root"
+
+// Salida de find -printf: basura del .bashrc, un archivo con tab en el nombre, una carpeta y un symlink a carpeta.
+const sudoTestListing = "hola desde bashrc\n\x00" +
+	"-rw-------\t12\t1700000000.5\tf\tnotas\tviejas.txt\x00" +
+	"drwx------\t4096\t1700000001.0\td\t.ssh\x00" +
+	"lrwxrwxrwx\t7\t1700000002.0\td\tlogs\x00"
+
+// Una carpeta sin permiso se lista como root, con el mismo flujo de contraseña que leer y guardar.
+func TestSudoList(t *testing.T) {
+	f := &fakeSudo{mode: "passwd"}
+	m, _ := sudoRig(t, f)
+	if _, err := m.SudoList("srv", sudoTestDir+"/", ""); !isCode(err, CodeSudoPassword) {
+		t.Fatalf("sin contraseña: %v", err)
+	}
+	l, err := m.SudoList("srv", sudoTestDir+"/", "secreta")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if l.Path != sudoTestDir || len(l.Entries) != 3 {
+		t.Fatalf("listado: %+v", l)
+	}
+	want := []FileEntry{
+		{Name: ".ssh", Path: "/root/.ssh", Size: 4096, Mode: "drwx------", IsDir: true, ModTime: 1700000001},
+		{Name: "logs", Path: "/root/logs", Size: 7, Mode: "lrwxrwxrwx", IsDir: true, IsLink: true, ModTime: 1700000002},
+		{Name: "notas\tviejas.txt", Path: "/root/notas\tviejas.txt", Size: 12, Mode: "-rw-------", ModTime: 1700000000},
+	}
+	for i, e := range want {
+		if l.Entries[i] != e {
+			t.Errorf("entrada %d: %+v, quería %+v", i, l.Entries[i], e)
+		}
 	}
 }
 
